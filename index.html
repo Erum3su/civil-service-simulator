@@ -1,0 +1,3071 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>铁饭碗模拟器</title>
+<meta name="description" content="一款文字类仕途模拟游戏。你 22 岁，考公上岸。每一年做一次选择，直到退休、或者走不动为止。">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#9c2b23">
+<meta property="og:type" content="website">
+<meta property="og:title" content="铁饭碗模拟器">
+<meta property="og:description" content="你 22 岁，考公上岸。一年一个选择，直到退休、或者走不动为止。">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23e9e3d6'/%3E%3Ctext y='.9em' font-size='84' x='8' fill='%239c2b23' font-family='sans-serif' font-weight='bold'%3E铁%3C/text%3E%3C/svg%3E">
+<style>
+/* ============ 基础 ============ */
+:root{
+  color-scheme: light;
+  --paper:#e9e3d6;
+  --card:#fbf8f1;
+  --card2:#f3eee2;
+  --ink:#26221c;
+  --ink2:#5c5548;
+  --ink3:#8d8474;
+  --red:#9c2b23;
+  --red2:#c0392b;
+  --line:#c9bfa8;
+  --line2:#ddd4bf;
+  --good:#3d6b45;
+  --bad:#9c2b23;
+  --c-merit:#35617f;
+  --c-net:#9a7420;
+  --c-hp:#3d6b45;
+  --c-fam:#8c4f6b;
+  --c-risk:#9c2b23;
+  --display:"Heiti SC","PingFang SC","Hiragino Sans GB","Source Han Sans SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+  --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
+}
+*{box-sizing:border-box}
+button, input, select, textarea{
+  -webkit-appearance:none; -moz-appearance:none; appearance:none;
+  background-image:none;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-text-fill-color:currentColor;   /* iOS 会用系统色覆盖按钮文字，这条锁死 */
+  font:inherit; color:inherit;
+  border-radius:0;
+}
+button{ text-shadow:none; }
+body{
+  margin:0; padding:0;
+  background:var(--paper);
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0,0,0,.014) 0 1px, transparent 1px 3px),
+    radial-gradient(ellipse at 20% 10%, rgba(255,255,255,.5), transparent 60%);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px; line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:820px; margin:0 auto; padding:0 16px 80px}
+
+/* ============ 红头 ============ */
+header.doc{padding:26px 0 0; text-align:center}
+.doc h1{
+  font-family:var(--display); font-weight:800;
+  color:var(--red); margin:0;
+  font-size:clamp(26px,6.5vw,40px);
+  letter-spacing:clamp(4px,2vw,14px);
+  text-indent:clamp(4px,2vw,14px);
+}
+.doc .sub{
+  font-family:var(--display); color:var(--ink3);
+  font-size:12px; letter-spacing:3px; margin-top:6px;
+}
+.rule{border:0; border-top:2.5px solid var(--red); margin:12px 0 2px}
+.rule.thin{border-top:1px solid var(--red); margin:0 0 18px}
+
+/* ============ 卡片 ============ */
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:2px;
+  padding:18px 20px;
+  margin:14px 0;
+  box-shadow:0 1px 0 rgba(0,0,0,.04), 0 6px 18px -14px rgba(0,0,0,.4);
+}
+.card.tight{padding:14px 16px}
+.sec-title{
+  font-family:var(--display); font-size:13px; font-weight:700;
+  letter-spacing:3px; color:var(--ink2);
+  border-left:3px solid var(--red); padding-left:9px;
+  margin:0 0 12px;
+}
+
+/* ============ 状态栏 ============ */
+.statusbar{
+  display:flex; flex-wrap:wrap; gap:8px 18px; align-items:baseline;
+  font-family:var(--display); padding:12px 16px;
+  background:var(--card2); border:1px solid var(--line);
+  border-top:3px double var(--red);
+  margin:0 0 14px;
+}
+.statusbar .yr{font-size:22px; font-weight:700; color:var(--red); letter-spacing:1px}
+.statusbar .rk{font-size:17px; font-weight:700}
+.statusbar .meta{
+  font-size:12.5px; color:var(--ink2); margin-left:auto;
+  display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;
+}
+.statusbar .wv{line-height:1.5}
+.tcard .ti{padding:8px 0; border-bottom:1px dotted var(--line2)}
+.tcard .ti:last-child{border-bottom:0}
+
+/* ============ 指标 ============ */
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:9px 20px}
+.stat{display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center}
+.stat .nm{font-family:var(--display); font-size:13.5px; font-weight:800; color:var(--ink); letter-spacing:1px; white-space:nowrap}
+.stat .bar{height:7px; background:#ded5c0; border-radius:0; overflow:hidden; position:relative}
+.stat .bar i{display:block; height:100%; background:var(--ink2); transition:width .5s cubic-bezier(.2,.8,.3,1)}
+.stat .bar i.b-merit{background:var(--c-merit)}
+.stat .bar i.b-net  {background:var(--c-net)}
+.stat .bar i.b-hp   {background:var(--c-hp)}
+.stat .bar i.b-fam  {background:var(--c-fam)}
+.stat .bar i.b-risk {background:var(--c-risk)}
+.stat .vl.warn{color:var(--red)}
+.stat .nm.warn{color:var(--red)}
+.enrow{display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
+  margin-top:11px; padding-top:11px; border-top:1px dashed var(--line)}
+.enrow .nm{font-family:var(--display); font-size:13.5px; font-weight:800; color:var(--red); letter-spacing:1px; white-space:nowrap}
+.enrow .vl{font-family:var(--display); font-size:14.5px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap}
+.epips{display:flex; gap:3px; flex-wrap:wrap}
+.epips i{width:13px; height:13px; border:1px solid var(--line); background:#e2dac6; display:block}
+.epips i.on{background:var(--red); border-color:var(--red)}
+.stat .vl{font-family:var(--display); font-size:14.5px; font-weight:800; font-variant-numeric:tabular-nums; min-width:36px; text-align:right; color:var(--ink)}
+.stat .dt{font-size:11px; font-variant-numeric:tabular-nums; margin-left:3px}
+.dt.up{color:var(--good)} .dt.dn{color:var(--bad)}
+.moneyrow{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-family:var(--display); margin-top:11px; padding-top:10px; border-top:1px dashed var(--line);
+  font-size:13.5px; font-weight:700; color:var(--ink2); flex-wrap:wrap; gap:6px 14px;
+}
+.moneyrow b{font-size:19px; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums}
+.risknote{font-size:12.5px; color:var(--ink3); font-style:italic}
+.moneyrow .ab{font-size:11.5px; color:var(--ink3); font-weight:400}
+.tchip{
+  font-family:var(--display); font-size:12.5px; font-weight:700; letter-spacing:1px; cursor:pointer;
+  border:1.5px solid var(--red); background:#fff; color:var(--red);
+  -webkit-text-fill-color:var(--red);
+  padding:4px 12px; border-radius:2px; transition:.15s; white-space:nowrap;
+  box-shadow:0 1px 0 rgba(156,43,35,.18);
+}
+.tchip:hover{background:var(--red); color:#fff; -webkit-text-fill-color:#fff}
+.tchip.on{background:var(--red); color:#fff; -webkit-text-fill-color:#fff}
+.tchip b{font-size:14px}
+.tpanel{margin-top:11px; padding-top:11px; border-top:1px dashed var(--line)}
+.tpanel .ti{padding:7px 0; border-bottom:1px dotted var(--line2)}
+.tpanel .ti:last-child{border-bottom:0}
+.tn{font-family:var(--display); font-weight:700; font-size:13.5px}
+.te{font-family:var(--display); font-size:12px; color:var(--red); margin-left:8px}
+.td{font-size:12.5px; color:var(--ink3); line-height:1.6; margin-top:2px}
+.tgain{
+  margin-top:11px; padding-left:9px; border-left:2px solid var(--red);
+  font-family:var(--display); font-size:12.5px; color:var(--ink2); letter-spacing:.5px;
+}
+
+/* ============ 事件 ============ */
+.ev-tag{
+  display:inline-block; font-family:var(--display); font-size:11px; letter-spacing:2px;
+  color:var(--red); border:1px solid var(--red); padding:1px 7px; margin-bottom:9px;
+}
+.ev-title{font-family:var(--display); font-size:20px; font-weight:700; margin:0 0 12px; letter-spacing:.5px}
+.ev-text{white-space:pre-wrap; color:var(--ink); margin-bottom:4px; font-weight:450}
+.ev-text em{color:var(--ink3); font-style:italic}
+
+.opts{margin-top:16px; display:grid; gap:9px}
+.opt{
+  display:flex; align-items:center; justify-content:space-between; gap:14px;
+  width:100%; text-align:left; cursor:pointer;
+  background:var(--card2); border:1px solid var(--line);
+  padding:12px 14px; font:inherit; color:var(--ink);
+  border-radius:2px; transition:.14s; position:relative;
+  -webkit-text-fill-color:var(--ink);
+}
+.opt:hover:not(:disabled){background:#fff; border-color:var(--red); transform:translateX(3px)}
+.opt:disabled{opacity:.45; cursor:not-allowed}
+.opt .ot{font-weight:700; flex:1; line-height:1.5}
+.opt .oc{
+  flex:none; font-size:12px; color:var(--ink2); font-family:var(--display);
+  letter-spacing:.5px; white-space:nowrap; padding:2px 8px;
+  border:1px solid var(--line); border-radius:2px; background:var(--card);
+}
+.opt .oc.no{color:var(--red); border-color:var(--red)}
+.result{
+  margin-top:14px; padding:12px 14px; background:#f0ece0;
+  border-left:3px solid var(--ink3); white-space:pre-wrap; font-size:14.5px;
+}
+.eff{margin-top:9px; font-family:var(--display); font-size:12.5px; letter-spacing:1px; display:flex; flex-wrap:wrap; gap:4px 12px}
+
+/* ============ 精力 ============ */
+.enhead{display:flex; justify-content:space-between; align-items:baseline; font-family:var(--display); margin-bottom:12px; flex-wrap:wrap; gap:6px}
+.enhead .left{font-size:13px; letter-spacing:2px; color:var(--ink2)}
+.enhead .pts{font-size:15px}
+.enhead .pts b{font-size:24px; color:var(--red); font-variant-numeric:tabular-nums}
+.alloc{display:grid; gap:10px}
+.arow{display:grid; grid-template-columns:104px auto 1fr auto; gap:11px; align-items:center}
+.arow .num{font-family:var(--display); font-weight:700; font-size:15px; font-variant-numeric:tabular-nums; color:var(--ink2); min-width:16px}
+.arow .lb{font-family:var(--display); font-size:14px; letter-spacing:1px}
+.arow .lb small{display:block; font-size:10.5px; color:var(--ink3); letter-spacing:0; font-family:var(--sans)}
+.pips{display:flex; gap:5px; flex-wrap:wrap; align-items:center}
+.pip{width:26px; height:26px; border:1px solid var(--line); background:#e2dac6; cursor:pointer; transition:.1s; border-radius:2px}
+.pip.on{background:var(--ink2); border-color:var(--ink2)}
+.pip:hover{border-color:var(--red)}
+.allocnote{margin-top:14px; padding-top:11px; border-top:1px dashed var(--line); font-size:12.5px; color:var(--ink3); line-height:1.7}
+.actrl{display:flex; gap:4px}
+.actrl button{
+  width:27px; height:27px; border:1px solid var(--line); background:var(--card2);
+  cursor:pointer; font:inherit; font-size:15px; line-height:1; color:var(--ink);
+  -webkit-text-fill-color:var(--ink); border-radius:2px;
+}
+.actrl button:hover:not(:disabled){background:#fff; border-color:var(--red); color:var(--red)}
+.actrl button:disabled{opacity:.35; cursor:not-allowed}
+
+/* ============ 按钮 ============ */
+.btn{
+  display:inline-block; font-family:var(--display); letter-spacing:3px; font-size:15px;
+  background:var(--red); color:#fff; -webkit-text-fill-color:#fff;
+  border:0; padding:11px 30px;
+  cursor:pointer; border-radius:2px; transition:.15s;
+}
+.btn:hover{background:#7d211a}
+.btn.ghost{background:transparent; color:var(--ink2); -webkit-text-fill-color:var(--ink2); border:1px solid var(--line); letter-spacing:2px; font-size:13px; padding:8px 18px}
+.btn.ghost:hover{border-color:var(--red); color:var(--red); background:#fff}
+.btnrow{display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin-top:16px}
+.center{text-align:center}
+
+/* ============ 年终 ============ */
+.ledger{font-family:var(--display); font-size:14px}
+.ledger div{display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px dotted var(--line2); gap:12px}
+.ledger div:last-child{border-bottom:0}
+.ledger .k{color:var(--ink2)}
+.ledger .v{font-variant-numeric:tabular-nums; white-space:nowrap}
+.notice{
+  border:1px solid var(--red); border-left-width:4px; background:#fdf6f4;
+  padding:13px 16px; margin:12px 0; font-size:14.5px; white-space:pre-wrap;
+}
+.notice .nt{font-family:var(--display); font-weight:700; color:var(--red); letter-spacing:2px; margin-bottom:5px; font-size:13px}
+.notice.gray{border-color:var(--line); background:var(--card2)}
+.notice.gray .nt{color:var(--ink2)}
+
+/* ============ 结局 ============ */
+.ending{text-align:center; padding:14px 6px 6px}
+.ending .seal{
+  display:inline-block; border:3px double var(--red); color:var(--red);
+  font-family:var(--display); font-size:clamp(22px,5.5vw,30px); font-weight:800;
+  letter-spacing:6px; text-indent:6px; padding:16px 26px; transform:rotate(-3.5deg);
+  margin:10px 0 22px; opacity:.92;
+}
+.ending .etext{text-align:left; white-space:pre-wrap; font-size:15px; line-height:1.95}
+.epi{text-align:left; font-family:var(--display); font-size:14px; border-top:1px solid var(--line); margin-top:20px; padding-top:14px}
+.epi > div{display:flex; justify-content:space-between; padding:3px 0; gap:12px}
+.epi > .timeline{display:block}
+.timeline{overflow-x:hidden}
+.epi .k{color:var(--ink2)}
+
+/* ============ 杂 ============ */
+.redline{font-family:var(--display); font-size:12.5px; color:var(--ink2); letter-spacing:.5px}
+.redline b{color:var(--red)}
+.timeline{font-size:13px; font-family:var(--display)}
+.timeline > div{padding:3px 0; border-bottom:1px dotted var(--line2); display:flex; gap:10px; justify-content:flex-start}
+.timeline .ty{color:var(--red); font-variant-numeric:tabular-nums; white-space:nowrap; min-width:78px}
+.foot{text-align:center; color:var(--ink3); font-size:11.5px; margin-top:34px; font-family:var(--display); letter-spacing:1px}
+.hide{display:none!important}
+
+/* 本作刻意只有一套「公文纸」配色。深色模式下重新声明同一组变量，
+   防止移动端浏览器的自动深色化把颜色改掉。 */
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: light;
+    --paper:#e9e3d6; --card:#fbf8f1; --card2:#f3eee2;
+    --ink:#26221c; --ink2:#5c5548; --ink3:#8d8474;
+    --red:#9c2b23; --red2:#c0392b; --line:#c9bfa8; --line2:#ddd4bf;
+    --good:#3d6b45; --bad:#9c2b23;
+    --c-merit:#35617f; --c-net:#9a7420; --c-hp:#3d6b45; --c-fam:#8c4f6b; --c-risk:#9c2b23;
+  }
+  body{ background-color:var(--paper); color:var(--ink); }
+  .opt, .actrl button{ color:var(--ink); }
+  .btn.ghost{ color:var(--ink2); -webkit-text-fill-color:var(--ink2); }
+  .btn{ color:#fff; -webkit-text-fill-color:#fff; }
+}
+@media (max-width:520px){
+  .arow{grid-template-columns:94px auto 1fr auto; gap:6px}
+  .arow .lb small{font-size:10px; letter-spacing:-.2px}
+  .pips{gap:4px}
+  .pip{width:21px;height:21px}
+  .statusbar .meta{margin-left:0; width:100%; justify-content:flex-start}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <h1>铁饭碗模拟器</h1>
+  <div class="sub">青 阳 县 · 二 〇 二 六 年 度 新 录 用 人 员 档 案</div>
+  <hr class="rule"><hr class="rule thin">
+</header>
+
+<div id="app"></div>
+
+<div class="foot">本作纯属虚构 · 云江省 / 临川市 / 青阳县 及文中人物、机构均为架空</div>
+</div>
+
+<script>
+"use strict";
+/* ==================================================================
+   铁饭碗模拟器 — 单文件版
+   ================================================================== */
+
+/* ---------- 工具 ---------- */
+const $ = s => document.querySelector(s);
+const rnd = (a,b) => a + Math.random()*(b-a);
+const ri  = (a,b) => Math.floor(rnd(a,b+1));
+const cl  = (v,a=0,b=100) => Math.max(a, Math.min(b, v));
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+const chance = p => Math.random() < p;
+const cl2 = v => Math.max(0, v);       // 能力无上限
+
+/* ---------- 职级 ---------- */
+const RANKS = ["科员","副科","正科","副处","正处","副厅","正厅","副部","正部","副国级","正国级"];
+// 晋升到该级所需的：本级任职年限 / 参考年龄红线 / 坑位概率 / 评分门槛
+const PROMO = [
+  null,
+  { years:3, line:30, slot:.60, need:26 }, // →副科
+  { years:3, line:35, slot:.50, need:33 }, // →正科
+  { years:4, line:40, slot:.42, need:41 }, // →副处
+  { years:4, line:45, slot:.35, need:49 }, // →正处
+  { years:4, line:50, slot:.20, need:80 }, // →副厅
+  { years:4, line:55, slot:.16, need:88 }, // →正厅
+  { years:3, line:58, slot:.20, need:88 }, // →副部
+  { years:2, line:63, slot:.24, need:88 }, // →正部
+  { years:3, line:65, slot:.20, need:92 }, // →副国级
+  { years:3, line:70, slot:.22, need:95 }, // →正国级（一人之下）
+];
+const RETIRE_AGE = r => r>=9 ? 999 : r>=7 ? 70 : r>=5 ? 68 : 65;
+const SALARY = [7,9,11,14,17,21,25,30,36,44]; // 万元/年（上层刻意压平：升官给的是权力，不是钱）
+
+/* ---------- 时代浪潮 ---------- */
+const WAVES = [
+  { id:"ai", name:"政务大模型全面上线",
+    desc:"省里推行「智政云」，从今往后，材料是机器写的，人是用来签字的。有人一夜之间失去了赖以生存的本事，也有人一夜之间不用再熬夜了。",
+    mods:{ meritMul:.85, studyMul:1.3 }, tag:"ai" },
+  { id:"reform", name:"新一轮机构改革",
+    desc:"三个局合成一个局，牌子摘了两块，人一个没少。会议室不够用了，坑位更不够用了。",
+    mods:{ slotMul:.45 }, tag:"reform" },
+  { id:"retire", name:"延迟退休再调整",
+    desc:"退休年龄由六十五岁进一步延后。你算了算自己还能干几年，松了口气；又算了算你上面那位还能干几年，把气咽了回去。",
+    mods:{ slotMul:.6, retirePlus:2 }, tag:"" },
+  { id:"merge", name:"区划调整·撤县并区",
+    desc:"青阳县整建制并入临川市。公章换了、门牌换了、通讯录重排了，唯一没变的是你办公桌上那摞材料。",
+    mods:{ slotMul:.7, meritMul:1.15 }, tag:"merge" },
+  { id:"money", name:"财政紧平衡",
+    desc:"文件的说法是「过紧日子」。具体表现为绩效缓发、空调限时、以及食堂的红烧肉里出现了越来越多的土豆。",
+    mods:{ incomeMul:.78 }, tag:"money" },
+  { id:"clean", name:"新一轮正风肃纪",
+    desc:"专项行动开始了。有人连夜退了东西，有人连夜睡不着，还有人连夜想起了一件八年前的小事。",
+    mods:{ riskLower:14, riskGainMul:1.4 }, tag:"clean" },
+  { id:"climate", name:"极端气候年",
+    desc:"入汛以来第七轮强降雨。防汛指挥部的灯亮了四十天，有人在这四十天里立了功，有人在这四十天里进了医院。",
+    mods:{ meritMul:1.35, healthMul:1.5 }, tag:"climate" },
+  { id:"jobless", name:"AI 再就业冲击",
+    desc:"社会上多出来一批不知道该干什么的人，他们中的一部分找到了信访办。",
+    mods:{ meritMul:1.1, healthMul:1.3 }, tag:"jobless" },
+  { id:"newarea", name:"云江新区设立",
+    desc:"一片滩涂上要长出一座城。文件里叫「战略机遇」,私下里叫「谁去谁知道」。",
+    mods:{ slotMul:1.5, meritMul:1.2 }, tag:"newarea" },
+  { id:"young", name:"干部年轻化试点",
+    desc:"组织部下了新文件，鼓励破格提拔。年轻人眼睛亮了，四十五岁以上的同志开始集体讨论养生。",
+    mods:{ ageCoefBonus:.12, youngBoost:true }, tag:"" },
+  { id:"media", name:"舆情全透明",
+    desc:"每个人的口袋里都有一台摄像机。从今往后，你的一句话可以在四十分钟内传遍全省。",
+    mods:{ riskGainMul:1.5, meritMul:1.1 }, tag:"media" },
+  { id:"aging", name:"银发社会",
+    desc:"全省六十岁以上人口过半。养老是政绩，也是你自己家里的事。",
+    mods:{ familyMul:1.4 }, tag:"aging" },
+];
+
+
+/* ---------- 学习效率：越老学得越慢。年龄本身就是天花板，不另设上限 ---------- */
+function studyEffText(){
+  const a = S.age;
+  return a < 30 ? "现在学得最快"
+       : a < 38 ? "还学得进去"
+       : a < 46 ? "开始有点吃力"
+       : a < 54 ? "学得慢了"
+       : a < 62 ? "很难再学进去"
+       : "基本学不动了";
+}
+function studyEff(){
+  const a = S.age;
+  return a < 30 ? 1.40
+       : a < 38 ? 1.00
+       : a < 46 ? 0.62
+       : a < 54 ? 0.35
+       : a < 62 ? 0.18
+       : 0.08;
+}
+
+/* ---------- 孩子年龄：按出生那年算起 ---------- */
+function kidAge(st){
+  if(!st.flags.child) return -1;
+  return st.year - (st.flags.childYear || (st.year - 8));
+}
+
+/* ---------- 灰色收入：凡"给钱同时给风险"的选项，那笔钱就记在这里 ----------
+   它不影响存款显示，只在个人事项报告这类场合被翻出来。 */
+function greyMoney(st){ return st.grey || 0; }
+
+/* ---------- 档案词条 ----------
+   全部来自已有事件的选择结果。effect 字段说明：
+   workMul/relMul 精力产出乘区 · meritDecay/netDecay 折旧乘区
+   promo 晋升评分加分 · income/expense 年收支 · famDecay 家庭衰减调整
+   netYear/riskYear 每年固定增减 · special 特殊机制
+------------------------------------------------ */
+const TRAITS = [
+  { id:"degree",     name:"在职硕士",   from:"读完在职研究生",
+    desc:"周末泡了两年半的教室。学历这东西平时没用，只在你差一点点的时候有用。",
+    eff:{ workMul:1.08, promo:2 } },
+  { id:"grassroots", name:"基层经历",   from:"驻村两年",
+    desc:"村小学空教室里的两个冬天。往上走绕不过去的一道坎，你迈过去了。",
+    eff:{ promo:3 } },
+  { id:"mishu",      name:"大秘出身",   from:"给领导当过秘书",
+    desc:"你知道他几点起、喝什么茶、怕什么。这套本事换个地方也管用。",
+    eff:{ relMul:1.15 } },
+  { id:"provPatron", name:"省厅有人",   from:"借调后被留下",
+    desc:"通讯录里那几个号码，不常打，但打得通。",
+    eff:{ netDecay:0.75 } },
+  { id:"dorm",       name:"住在单位",   from:"住进单位宿舍",
+    desc:"走到办公室两分钟。方便，也意味着你没有一天真正下过班。",
+    eff:{ workMul:1.10, famDecay:-0.5 } },
+  { id:"laoxiang",   name:"老乡会",     from:"加入了老乡圈子",
+    desc:"每月一次的饭局。多条线是多条路，也是多一条能被问起的线。",
+    eff:{ netYear:1, riskYear:0.5 } },
+  { id:"tape",       name:"一份录音",   from:"存下了那通电话",
+    desc:"锁在一个你自己都很少打开的文件夹里。你希望这辈子都用不上它。",
+    eff:{ special:"免于一次审查" } },
+  { id:"recused",    name:"回避记录",   from:"主动申请回避中标项目",
+    desc:"你写的那份情况说明，进了档案。有人说你傻。",
+    eff:{ special:"副国级考察的风险门槛放宽至 26" } },
+  { id:"confessed",  name:"交代记录",   from:"主动向组织说清楚",
+    desc:"从那栋楼里出来的下午下着小雨，你没打伞。",
+    eff:{ special:"退休后不再被追查" } },
+  { id:"bigwin",     name:"标志性工程", from:"干成了一件大事",
+    desc:"签字那天一把手在会上说了三次你的名字。这是能记进档案的东西。",
+    eff:{ promo:4 } },
+  { id:"crisis",     name:"扛过大事",   from:"处置过重大危机",
+    desc:"七十二小时没合眼。这一笔比任何材料都硬。",
+    eff:{ promo:4 } },
+  { id:"sideWin",    name:"跟对了人",   from:"站队站对了",
+    desc:"那半年你没睡好，但你赌赢了。",
+    eff:{ relMul:1.10 } },
+  { id:"award",      name:"优秀公务员", from:"获得表彰",
+    desc:"奖状在抽屉最下层。它没用，但它在。",
+    eff:{ promo:2 } },
+  { id:"sp_teacher", name:"后方安稳",   from:"配偶是中学老师",
+    desc:"她会在你半夜回家时把灯留着。",
+    eff:{ famDecay:0.6, income:4 } },
+  { id:"sp_business",name:"家里有生意", from:"配偶经商",
+    desc:"生活质量肉眼可见地提高了。以及那张表你每年都要多看两遍。",
+    eff:{ income:6, riskYear:1 } },
+  { id:"kidCivil",   name:"子承父业",   from:"子女也进了体制",
+    desc:"你没劝住，也可能是你根本没想劝。饭桌上你们终于有了共同语言。",
+    eff:{ famDecay:0.5, promo:1 } },
+  { id:"sp_civil",   name:"双职工",     from:"配偶也在体制内",
+    desc:"她能听懂你所有的抱怨。代价是家里没有一个人是闲着的。",
+    eff:{ income:5.5, famDecay:-0.8 } },
+];
+
+function activeTraits(){
+  if(!S) return [];
+  return TRAITS.filter(t=>{
+    if(t.id==="sp_teacher")  return S.flags.spouse==="teacher";
+    if(t.id==="sp_business") return S.flags.spouse==="business" || S.flags.spouseBiz;
+    if(t.id==="sp_civil")    return S.flags.spouse==="civil";
+    if(t.id==="sideWin")     return S.flags.sideOld || S.flags.sideNew;
+    return !!S.flags[t.id];
+  });
+}
+// 乘区：连乘；加区：累加
+function tMul(key){ return activeTraits().reduce((a,t)=>a*(t.eff[key]||1), 1); }
+function tSum(key){ return activeTraits().reduce((a,t)=>a+(t.eff[key]||0), 0); }
+
+/* ---------- 结局 ---------- */
+const ENDINGS = [
+  { id:"topped", seal:"一 人 之 下", test:s=>s.topped,
+    text:`任命是在一个很短的会上宣布的。掌声持续了十七秒。\n\n从这一天起，这个国家的事，只有一个人比你管得更多。\n\n你有过很多间办公室。这一间最大，也最安静——安静到你能听见自己翻动纸页的声音。\n\n没有人再跟你说真话了。这不怪谁，是位置本身的性质：到了这里，你听见的每一句话，都是别人斟酌了很久才说出口的。\n\n有天夜里你批完最后一份文件，抬头看见窗玻璃里自己的影子。\n\n你忽然很想问那个二十二岁、坐在青阳县办公室最里面那张桌子前、被一摞二十七公分高的材料压得抬不起头的年轻人一个问题：\n\n这是你要的吗。\n\n你没有问。因为你已经想不起来他会怎么回答了。` },
+  { id:"escaped", seal:"亡 命 天 涯", test:s=>s.escaped,
+    text:`你落地的那天，那个城市在下雨。\n\n你有一栋房子、一个新名字、和一笔够花完下半辈子的钱。你还有一部手机，里面存着三百多个号码，一个也不能拨。\n\n头两年你还看国内的新闻。后来不看了——因为你在一份很长的名单上看见了自己，编号靠后，照片用的是十年前那张工作照。\n\n第八年，你在超市货架上看见一包老家的辣酱。你站了很久，最后没买。\n\n你活得比很多人都久。这大概是这件事里唯一称得上「成功」的部分。` },
+  { id:"guoji", seal:"功 德 圆 满", test:s=>s.rank>=9 && s.risk<25,
+    text:`你走的那天，讣告用了很长的篇幅，列举了你一生所任的职务。名单很长，长到大部分人读到一半就跳过了。\n\n只有几个白发苍苍的老人从很远的地方赶来。他们中有人说，当年在青阳县，你替他挡过一次。\n\n那是几十年前的事了，你自己都忘了。` },
+  { id:"guoji_fall", seal:"高 处 风 大", test:s=>s.rank>=9,
+    text:`你到过很少人到过的地方。\n\n也正因为如此，当那一天到来时，全国都听见了。\n\n新闻通稿只有三百字。三百字之外的四十年，没有人再提起。` },
+  { id:"chaye", seal:"人 走 茶 凉", test:s=>s.rank>=7 && s.family<25,
+    text:s=>`退下来的第三年，你发现家里的电话不响了。\n\n${s.flags.child
+      ? "{子女}在国外，一年回来一次，住三天。{TA子}和你说话很客气，像在和一位需要照顾的老领导说话。"
+      : "从前每天响一百次的那个号码，现在一周也响不了一次。你翻通讯录翻了很久，最后谁也没拨。"}\n\n你曾经批过几百个亿的项目，签过上千份文件。现在你每天最重要的一件事，是把楼下棋摊的残局看完。` },
+  { id:"shanzhong", seal:"善 始 善 终", test:s=>s.rank>=7 && s.risk<25 && s.health>=40,
+    text:s=>`你退休那年，单位按规矩给你办了个简朴的欢送会。\n\n你带过的人来了不少，现在都在各自的岗位上。有个当年被你骂哭过的年轻人，如今已经是正处了，他敬酒时手抖了一下。\n\n后来的很多年，你在小区里散步，遛狗，${s.flags.child?"接孙子放学":"给楼下的猫喂食"}。有人在电梯里认出你，你笑笑说，退了退了。\n\n你活到很老。走的时候是在睡梦里。` },
+  { id:"qingguan", seal:"两 袖 清 风", test:s=>s.rank>=4 && s.risk<12 && s.money<180,
+    text:s=>`你这辈子没发过财。\n\n${s.flags.child
+      ? "你退休的时候，存折上的数字让你{子女}沉默了很久。{TA子}知道你经手过多少钱。"
+      : "你退休的时候算了一次账，发现自己攒下的还不如当年一个来办事的人随手放下的多。"}\n\n可你走的那天，来了很多不该来的人——早年被你顶着压力批过低保的、被你拦下过一次强拆的、你根本记不住名字的。\n\n有个老太太在门口站了很久，谁也不认识她。` },
+  { id:"lonely", seal:"孤 家 寡 人", test:s=>s.rank>=5 && s.family<25,
+    text:`你赢了。所有的坑位、所有的考核、所有你想要的位置，你都拿到了。\n\n代价是一间没有人等你的房子。\n\n最后那几年，陪你说话最多的是保姆。她很尽责，但她并不认识那个二十二岁、在青阳县的办公室里被一摞材料压得抬不起头、心里想着「我一定要出人头地」的年轻人。\n\n那个年轻人也不认识现在的你。` },
+  { id:"wannian", seal:"晚 节 不 保", test:s=>s.busted,
+    text:s=>`很多年前，有人问过你一句：你不怕吗？\n\n你当时说，这算什么。\n\n后来你确实有很多次机会收手。每一次你都想，再一次，就一次。\n\n通报里说，你严重违反纪律，性质恶劣，影响极坏。\n\n${s.flags.child
+      ? "你{子女}后来说过一句：我从小到大，其实没见过他几面。"
+      : "没有人替你说话，也没有人需要替你说话。你这一辈子，最后只剩下那份通报里的三百个字。"}` },
+  { id:"laolei", seal:"积 劳 成 疾", test:s=>s.diedInOffice && s.age<62,
+    text:s=>`你倒在办公室的那天，桌上还摊着明天要用的材料。\n\n单位开了追悼会，规格给得很高，悼词里说你「把毕生精力献给了党的事业」。\n\n这句话是真的。\n\n${s.flags.married
+      ? "你{配偶}在角落里坐着，没有哭。{TA}只是想起十五年前有一次，你答应" + (s.flags.child ? "带{子女}去海边" : "陪{TA}回一趟老家") + "，后来临时有个会。\n\n后来再也没去成。"
+      : "追悼会来的都是同事。他们排着队，握手，说节哀，然后各自回单位继续开会。\n\n没有人需要被安慰。"}` },
+  { id:"pingfan", seal:"平 凡 一 生", test:s=>s.rank<=2 && s.family>=55 && s.health>=35,
+    text:s=>`你这辈子最高做到了${RANKS[s.rank]}。年轻时你以为这是耻辱。\n\n六十五岁那年你办完退休手续，走出大院，阳光很好。你忽然想起三十年前的某个傍晚，你也是这样走出来，当时你觉得人生完了。\n\n结果人生没完，它只是没往你以为的方向走。\n\n${s.flags.child
+      ? "你{子女}的婚礼上，{TA子}说：我爸这个人没什么本事，但他每次说来接我，都真的来了。"
+      : "有年冬天你回老家，你妈还认得出你。她说，你比年轻时候胖了，气色好。\n\n你说是啊，不熬夜了。"}\n\n那一刻你觉得，这也不错。` },
+  { id:"keyuan", seal:"一 生 科 员", test:s=>s.rank<=1,
+    text:`四十多年，你的名字在那张办公桌上出现过，又消失了。\n\n新来的年轻人问：这位置以前是谁坐的？\n\n没人记得。\n\n你自己倒是都记得。你记得每一次名单公布时那种心往下沉的感觉，记得你反复琢磨过究竟是哪一步走错了，记得你最后终于不再琢磨了。\n\n你走得很平静。这世上大部分人都是这样过完的。` },
+  { id:"xiahai", seal:"另 谋 高 就", test:s=>s.quit,
+    text:`你辞职那天，办公室的人都说你疯了。\n\n后来的事你自己知道。有过好的时候，也有过差点撑不下去的时候。\n\n很多年后同学聚会，当年劝你别走的老王已经是正处了，他喝多了拉着你说，其实我一直挺羡慕你的。\n\n你笑了笑，没说话。你也羡慕过他，只是那已经是很久以前的事了。` },
+  { id:"bingtui", seal:"病 退", test:s=>s.sickLeave,
+    text:`医生说得很直接：你要么退，要么就这么下去。\n\n你签字的时候手很稳，签完才发现自己出了一身汗。\n\n后来的日子安静得让你不习惯。你花了整整两年才学会不在早上七点惊醒。\n\n第三年上，你开始种花。你养死了很多盆，后来慢慢也养活了几盆。` },
+  { id:"weichou", seal:"壮 志 未 酬", test:s=>s.diedInOffice && s.rank>=4,
+    text:`你倒下的时候，手里还有三件没办完的事。\n\n追悼会上，接任的人念完悼词，第二天就把你桌上那三件事接了过去。他办得比你快。\n\n这个系统最了不起的地方在于，它从来不会因为少了谁而停下来。` },
+  { id:"gongcheng", seal:"功 成 身 退", test:s=>s.rank>=5 && s.risk<28 && s.family>=38,
+    text:`你在副厅这个位置上退的。不算低，也谈不上高。\n\n退休那天你把办公室的东西装了两个纸箱，其中一个装的全是笔记本，从二〇二六年记到现在，一本没扔。\n\n你翻到第一本的第一页，上面写着：「今天报到。桌上材料二十七公分。」\n\n你笑了很久，然后合上了。` },
+  { id:"zhongceng", seal:"中 流 砥 柱", test:s=>s.rank>=5 && s.rank<=6 && s.merit>=70,
+    text:s=>`你在${RANKS[s.rank]}这个位置上退的，前后干了很多年。\n\n这个层级的人是最累的：上面定方向，下面等指令，中间所有具体的活都是你的。你签过的字比你说过的话多。\n\n退休那年单位换了新系统，有个年轻人来问你要历年的数据。你打开抽屉，把整理好的目录递给他。\n\n他愣了一下，说：这些您都留着啊？\n\n你说，总得有人留着。` },
+  { id:"fuwuwei", seal:"富 而 无 位", test:s=>s.money>=380 && s.rank<=5,
+    text:s=>`你的存款数字很好看。好看到你从来不敢跟同事提。\n\n你这辈子最高做到了${RANKS[s.rank]}，那个位置就再没动过，但你比任何一个升上去的人都更清楚——那些钱是从哪儿来的，又是在哪个夜里让你睡不着的。\n\n你走的时候，${s.flags.child ? "{子女}" : "来清点房子的人"}翻出一个上了锁的铁盒。\n\n没有打开。` },
+  { id:"anwen", seal:"安 稳 落 地", test:s=>s.rank>=3 && s.family>=38 && s.risk<35,
+    text:s=>`你没有大富大贵，也没出过事。\n\n退休后你${s.flags.child?"带孙子":"养鸟"}、种花、跟老同事一年聚两次。有人问你后不后悔当年没搏那一把，你说，搏那一把的人现在在里头呢。\n\n这话有点刻薄，但你说完自己也笑了。\n\n你活得挺长。` },
+  { id:"huise", seal:"一 生 无 事", test:s=>s.risk>=32 && s.rank>=3,
+    text:s=>`你退休那天，什么也没发生。\n\n没有人来查你，也没有人来送你。你把办公室的东西装进两个纸箱，钥匙交给办公室，走了。\n\n这些年你不算干净。有些事你做了，有些事你默许了，还有些事你到现在也说不清算不算事。它们没有一件被翻出来。\n\n很多年后你在新闻里看到一个熟悉的名字，那个人比你收得多，也比你胆子大。你放下手机，去阳台把花浇了。\n\n你这辈子最大的运气，是你从来不是最贪的那一个。` },
+  { id:"buqinbushu", seal:"不 亲 不 疏", test:s=>s.rank>=3 && s.family>=24 && s.family<40,
+    text:s=>`退休以后，家里的日子过得很平静。\n\n${s.flags.married ? "你和{配偶}住在一起，一天说不了十句话，但也不吵。她做饭，你洗碗，晚上各看各的电视。" : "你一个人住。房子不大，收拾得很干净。"}\n\n${s.flags.child ? "{子女}一个月回来一次，坐两三个小时。你们聊天气、聊工作、聊{TA子}最近忙不忙。有些话题你们默契地绕开，绕了很多年。" : "过年的时候有几个老同事会来坐坐。他们走后，屋子会安静很长时间。"}\n\n这不是你年轻时想象的生活，但也不算坏。\n\n你走的时候，来送的人不多不少，正好把那间小厅坐满。` },
+  { id:"default", seal:"到 此 为 止", test:()=>true,
+    text:`故事结束了。\n\n没有轰轰烈烈，也没有身败名裂。你在这个系统里待了很多年，做过一些事，躲过一些事，也错过一些事。\n\n多年以后，已经没有人能准确说出你到底是个什么样的人。\n\n包括你自己。` },
+
+];
+
+/* ==================================================================
+   事件库
+   ================================================================== */
+/* 字段：id / w权重 / cond条件 / once只触发一次 / tag / title / text / opts
+   opt: t文字 / cost精力消耗 / eff数值 / msg结果 / fn自定义 */
+const EVENTS = [
+
+/* ---------- 开局 ---------- */
+{ id:"start", w:0, force:true, once:true, tag:"入职",
+  title:"报到",
+  text:`人事科的老王领你到办公室最里面那张桌子。桌上有一台落了灰的电脑、半盒过期的名片、和一个印着「先进工作者」的搪瓷缸——上一任留下的，没带走。\n\n「小张啊，年轻人多学习。」李主任说完这句话，把一摞材料放在了你桌上。\n\n那摞材料有二十七公分高。你后来量过。`,
+  opts:[
+    { t:"当天晚上就留下来看完了", cost:2, eff:{merit:4,health:-2},
+      msg:"你看到凌晨一点。第二天李主任路过，瞥了一眼你桌上的便签，什么也没说，但他记住了。" },
+    { t:"先摸清楚办公室里谁是谁", cost:2, eff:{network:5},
+      msg:"你花了一周时间搞明白：真正说了算的不是李主任，是那个天天泡茶的老周。这个信息很值钱。" },
+    { t:"礼貌收下，然后去吃饭了", eff:{health:2,family:2},
+      msg:"你按时下班，回出租屋煮了碗面。你觉得工作嘛，不至于。\n\n这个念头你后来会想起很多次。" },
+  ]},
+
+/* ---------- 早期·科员 ---------- */
+{ id:"friday", w:12, cond:s=>s.rank<=2, tag:"工作",
+  title:"周五下午四点半",
+  text:`主任把一份稿子推过来：「这个你看一下，下周一上午要，不急。」\n\n「不急」这两个字在这个单位有专门的含义。`,
+  opts:[
+    { t:"周末泡在办公室，改到他挑不出毛病", cost:4, eff:{merit:9,health:-6,family:-6},
+      msg:"周一早上他扫了两眼，说了句「还行」。就这两个字，你后来复盘了三遍，确认是好话。" },
+    { t:"用大模型跑一版，再手工润色", cost:2, eff:{merit:5,health:-1},
+      msg:"效率高得惊人。但隔壁老陈瞟了一眼你的屏幕，笑了一下：「现在你们年轻人啊。」\n\n那个笑你没看懂，但你记住了。", fn:s=>{s.flags.ai=true} },
+    { t:"周一早上再说", eff:{merit:-3,family:4,health:2},
+      msg:"周一你迟到了十分钟，稿子没动。主任没批评你，只是从那以后，重要的稿子不再给你。" },
+  ]},
+
+{ id:"dinner", w:11, cond:s=>s.rank<=4, tag:"应酬",
+  title:"饭局",
+  text:s=>{ const t=nth("dinner");
+    if(t<=1) return `下班前，李主任在群里@你：「晚上有个饭，你也来。」\n\n家里今天做了红烧肉，说等你回来吃。`;
+    if(t===2) return `又是群里那一句「晚上有个饭，你也来」。\n\n你没去看家里今天做了什么。你已经很久没赶上过饭点了。\n\n回「好」的时候，手指是自动的。`;
+    return `饭还是那些饭，位置换了。\n\n现在在群里发那句话的人，有时候是你。\n\n你偶尔会想，当年被@的那个人，是不是也在心里算着回家的时间。`; },
+  opts:[
+    { t:"去，而且坐在离领导最近的位置", cost:3, eff:{network:9,health:-5,family:-6,money:-.4},
+      msg:"你喝到晚上十一点半，回家的路上吐了一次。但你现在知道了明年的干部调整方向，这个消息比红烧肉贵。" },
+    { t:"去，但少喝，早退", cost:2, eff:{network:4,health:-2,family:-2},
+      msg:"你走的时候李主任抬眼看了看，没说什么。这种事情不说才是说。" },
+    { t:"推了，说家里有事", eff:{family:7,health:2,network:-4},
+      msg:"红烧肉很好吃。\n\n第二天你听说昨晚定了个人事上的事。你没在场。" },
+  ]},
+
+{ id:"credit", w:9, cond:s=>s.rank<=3, once:true, tag:"办公室",
+  title:"署名",
+  text:`你熬了三个通宵的调研报告被市里点名表扬了。\n\n表扬的文件上，第一作者是分管副主任。你的名字在第四位，后面还跟着一个你从来没见过的人。`,
+  opts:[
+    { t:"找他理论", cost:1, eff:{merit:3,network:-9,risk:0},
+      msg:"他愣了一下，然后笑着拍你肩膀：「年轻人有想法是好事。」\n\n后来三年，你再没接到过重要课题。" },
+    { t:"当没这回事，继续干", eff:{merit:5,network:4},
+      msg:"你什么都没说。副主任心里有数，半年后有个培训名额，他报了你。\n\n这个系统就是这么运转的。" },
+    { t:"私下把原稿发给了另一个领导", cost:1, eff:{network:6,risk:8},
+      msg:"那位领导记住了你的名字。副主任也很快知道了这件事。\n\n你同时拥有了一个靠山和一个敌人。这笔账现在算不清。" },
+  ]},
+
+{ id:"laoke", w:7, cond:s=>s.rank<=1 && s.age<32, once:true, tag:"办公室",
+  title:"老周的茶",
+  text:`老周在这个办公室坐了二十三年，还是科员。他泡茶的时候跟你说：\n\n「小伙子，我跟你讲，这里最要紧的不是干活。」\n\n他没说下半句，吹了吹茶叶。`,
+  opts:[
+    { t:"请他吃饭，把下半句问出来", cost:2, eff:{network:8,money:-.3},
+      fn:s=>{s.flags.zhouSeed="ask"; s.flags.zhouYear=s.year;},
+      msg:"下半句是：最要紧的是让对的人知道你在干活。\n\n这句话你用了一辈子。老周自己没用上，他也知道自己没用上。" },
+    { t:"心想我才不要变成他", eff:{merit:5,health:-2},
+      fn:s=>{s.flags.zhouSeed="scorn"; s.flags.zhouYear=s.year;},
+      msg:"你埋头干了一年活。\n\n年底考核，优秀给了一个天天陪领导打球的同事。你看着老周的背影，第一次觉得后背发凉。" },
+  ]},
+
+{ id:"relative", w:8, cond:s=>s.rank>=1, tag:"人情",
+  title:"二舅",
+  text:s=>{ const t=nth("relative");
+    if(t<=1) return `二舅打来电话，绕了十分钟才说到正题：他儿子想进你们系统下面一个事业单位，问你「能不能说句话」。\n\n他最后加了一句：「你妈当年供你上学，不容易。」`;
+    if(t===2) return `二舅又打来了。这次是外甥女，想进街道。\n\n铺垫比上次短了很多——上次那套说辞他已经用过了，两个人都记得。`;
+    return `二舅这回一句闲话没有，开口就是正事。\n\n说完他停了一下，补了一句：「上次那事你没帮上，家里都知道。」\n\n你妈从来没有跟你提过这件事。一次都没有。`; },
+  opts:[
+    { t:"帮，找人递个话", cost:2, eff:{network:-4,family:8,risk:12},
+      msg:"事办成了。二舅在老家逢人就说你出息了。\n\n你回家过年时被敬了很多酒。你笑着都喝了，心里有一小块地方是凉的。" },
+    { t:"如实说明白：走正规程序，我能给他讲讲怎么考", eff:{family:-4,merit:2,risk:-2},
+      msg:"二舅在电话那头沉默了很久，说了句「行，你忙」就挂了。\n\n那年过年，你妈单独跟你聊了半个小时。" },
+    { t:"直接说办不了", eff:{family:-9},
+      msg:"亲戚之间的事，一句话能记二十年。这句话被记了二十年。" },
+  ]},
+
+{ id:"classmate", w:7, cond:s=>s.age>=26 && s.age<=42, tag:"生活",
+  title:"同学聚会",
+  text:`当年宿舍成绩最差的老赵开了辆你叫不出名字的车来。他做建材生意，去年赚的钱是你二十年工资。\n\n他给你敬酒：「哥们儿现在也算体制内了，不容易。」\n\n这话到底是敬还是刺，你没分辨出来。`,
+  opts:[
+    { t:"多喝了几杯，回家路上想了很多", eff:{health:-3,money:-.2},
+      msg:"你在楼下坐了半小时才上去。家里问你怎么了，你说没事，单位有点事。" },
+    { t:"跟他聊了聊他的生意", cost:1, eff:{network:4,risk:5},
+      msg:"他递了张名片，说以后有事招呼。\n\n这张名片你留了很多年。留着，就是一种可能性。" },
+    { t:"心态很稳，聊了聊孩子", eff:{family:5,health:2},
+      msg:"散场时老赵拍着你说：还是你们旱涝保收好啊。\n\n他大概是真心的，也大概不是。" },
+  ]},
+
+{ id:"blinddate", w:14, cond:s=>s.age>=24 && s.age<=42 && !s.flags.married && !s.flags.divorced, tag:"家庭",
+  title:"相亲",
+  text:s=>{
+    const n = s.flags.blindCount || 0;
+    if(s.age <= 28 && n === 0)
+      return `你妈托人安排的。见面二十分钟，对方就直奔主题：\n\n「你们那个单位，一般几年能到副科？」`;
+    if(s.age <= 32)
+      return `又一个。这半年是第${n+1}个。\n\n你妈现在打电话不问你吃饭了，开口就是「周末有空吗」。\n\n对面坐着的人也一样疲惫，你们像两个都在加班的人被硬凑到了一起。`;
+    if(s.age <= 37)
+      return `这次是你姨介绍的，说人很好，就是「离过一次」。\n\n你妈在电话里说这句话时特意压低了声音，好像怕你生气。\n\n她已经不敢像前几年那样理直气壮地催你了。这比催更让你难受。`;
+    return `介绍人这次没绕弯子：对方比你大两岁，带一个孩子。\n\n他说，到你们这个岁数，条件得放一放了。\n\n你妈这两年不提这事了。上次回家，她只是给你收拾了一下衣柜，把你放了十年没穿的西装挂好。`;
+  },
+  opts:[
+    { t:"这个踏实，处下去", eff:{family:16,health:3},
+      fn:s=>{s.flags.married=true; s.flags.spouse="teacher"; s.flags.marryYear=s.year},
+      msg:s=>s.age<=32
+        ? "她是本地一所中学的老师。后来她成了你妻子。\n\n她不太懂你单位的事，但她会在你半夜回家时把灯留着。\n\n这一点你直到很多年后才明白它的分量。"
+        : "结婚那天办得很简单，两家人加起来四桌。\n\n她话不多，做事很稳。你有时候会想，要是早十年遇到会怎么样。\n\n然后你会想，早十年的你，多半看不上现在这样的日子。" },
+    { t:"家里做工程，条件最好", eff:{family:11,money:11,risk:14},
+      fn:s=>{s.flags.married=true; s.flags.spouse="business"; s.flags.marryYear=s.year},
+      msg:"婚后你的生活质量肉眼可见地提高了。\n\n以及，从此每年填报告的时候，「配偶从业情况」那一栏你都要多看两遍。" },
+    { t:"隔壁局的，双职工", eff:{family:9,network:9},
+      fn:s=>{s.flags.married=true; s.flags.spouse="civil"; s.flags.marryYear=s.year},
+      msg:"她在隔壁局，比你早一年上岸。\n\n你们聊的全是单位的事。她能听懂你所有的抱怨，这在别的婚姻里是很奢侈的。\n\n代价是家里没有一个人是闲着的。孩子放学谁去接，这个问题你们讨论了很多年，一直没讨论出结果。" },
+    { t:"再等等，先把工作搞上去", eff:{merit:6},
+      fn:s=>{ s.flags.blindCount = (s.flags.blindCount||0) + 1;
+        s.family = cl(s.family + (s.age<=28 ? -6 : s.age<=32 ? -9 : s.age<=37 ? -12 : -4));
+        s.pendMsg = s.age<=28
+          ? "你妈叹了口气，说那你自己看着办。\n\n你当时觉得等升上去再说也不迟。你二十六岁，觉得时间很多。"
+          : s.age<=32
+          ? "你妈在电话里哭了一次。这是第一次。\n\n你说妈我这两年正是关键时候。她说好好好，我不管了。\n\n她说「我不管了」的时候，你知道她还会管。"
+          : s.age<=37
+          ? "你妈这次没生气，只说了句「行，那就再看看」。\n\n挂了电话你坐了很久。你忽然意识到，让她生气的那些年已经过去了。"
+          : "介绍人客气地说了句「那再联系」，然后你们都知道不会再联系了。\n\n那天晚上你回单位加了会儿班。办公室没别人，很安静。\n\n你想起二十二岁刚来的时候，也是这么安静。"; } },
+  ]},
+
+{ id:"newborn", w:12, pri:8, cond:s=>s.flags.married && !s.flags.child && s.age<=45, once:true, tag:"家庭",
+  title:"孩子",
+  text:`孩子出生那天，你在产房外面的走廊里站着。\n\n手机响了三次，是单位的。你按掉了两次，第三次接了。`,
+  opts:[
+    { t:"跟单位说今天实在来不了", eff:{family:14,merit:-5},
+      fn:s=>{s.flags.child=true; s.flags.childBoy=chance(.5); s.flags.childYear=s.year;},
+      msg:"你在医院待了整整两天。\n\n很多年后你{子女}问你，我出生那天你在干嘛。你说，我在门口站着。\n\n这是你少数几件不用心虚就能回答的事。" },
+    { t:"安顿好就赶回去了", eff:{merit:7,family:-9},
+      fn:s=>{s.flags.child=true; s.flags.childBoy=chance(.5); s.flags.childYear=s.year;},
+      msg:"你当天下午就回了单位。那个会确实重要。\n\n你{配偶}没说什么。{TA}后来也一直没说什么。" },
+  ]},
+
+/* ---------- 机会事件 ---------- */
+{ id:"lianxuan", w:9, cond:s=>s.rank>=1 && s.rank<=3 && s.age<=40, tag:"机会",
+  title:"遴选公告",
+  text:`市直机关公开遴选，你符合条件。\n\n考上了，平台大一截；考不上，单位里所有人都知道你想走。`,
+  opts:[
+    { t:"报名，全力准备", cost:5, eff:{health:-5,family:-5},
+      fn:s=>{ if(chance(.42 + s.ability/260)){ s.rank=Math.min(9,s.rank+1); s.yearsInRank=0; s.merit*=.6; s.log.push([s.year,"遴选成功，进入市直机关"]); s.pendMsg="笔试面试都过了。你走的那天，老周替你收拾了桌子，说了句「好好干」。\n\n【你的职级和平台都上了一级】"; } else { s.network=cl(s.network-8); s.pendMsg="面试差了两名。\n\n回单位上班的第一天，所有人都对你特别客气。那种客气比嘲笑难受。"; } } },
+    { t:"不报，这里熬着也快到{下一级}了", eff:{merit:4,network:3},
+      msg:"你留下了。那年遴选走了两个人，他们的位置很快被填上，像什么都没发生过。" },
+  ]},
+
+{ id:"jiediao", w:8, cond:s=>s.rank>=1 && s.rank<=4 && s.age<=45, tag:"机会",
+  title:"借调",
+  text:`省厅要人，借调一年，可能留下，也可能一年后原样退回。\n\n办公室主任说得很直白：「去了是机会，回来是笑话，你自己掂量。」`,
+  opts:[
+    { t:"去", cost:4, eff:{merit:11,network:9,health:-7,family:-9},
+      fn:s=>{ if(chance(.3)){ s.network=cl(s.network+14); s.flags.provPatron=true; s.pendMsg="一年后你被留下了。省厅的视野和县里完全不是一回事。\n\n【你在省里有了人】"; } else { s.pendMsg="一年后你被退回来了。你带回来的除了一身疲惫，还有一本通讯录。\n\n通讯录后来救过你一次。"; } } },
+    { t:"不去，守住手里的位置", eff:{merit:4,family:4},
+      msg:"后来去的是隔壁科室的小刘。三年后他成了你的上级。\n\n当然，这是三年后的事，当时谁也不知道。" },
+  ]},
+
+{ id:"zhucun", w:8, cond:s=>s.rank>=1 && s.rank<=3 && s.age<=44, once:true, tag:"机会",
+  title:"驻村",
+  text:`组织部要派驻村第一书记，两年。\n\n条件很苦，但「基层经历」这四个字，是往上走绕不过去的一道坎。`,
+  opts:[
+    { t:"报名去", cost:5, eff:{merit:17,health:-10,family:-13,network:5},
+      fn:s=>{ s.flags.grassroots=true; },
+      msg:"两年。你住在村小学的空教室里，冬天没暖气。\n\n你修了一条路，解决了三十七户的自来水。你走的时候有个老太太塞给你两袋红薯，你在车上哭了。\n\n【已取得基层任职经历】" },
+    { t:"不去，家里离不开", eff:{family:8},
+      msg:"你留下了。\n\n很多年后，当你卡在副处上不去的时候，组织部的朋友私下跟你说了一句：你要是当年下去过就好了。" },
+  ]},
+
+{ id:"mishu", w:7, cond:s=>s.rank>=1 && s.rank<=3 && s.network>=25 && s.age<=42, once:true, tag:"机会",
+  title:"秘书",
+  text:`一位领导要挑个秘书。\n\n跟对了人，几年抵别人十几年；跟错了人，这几年就是白干，甚至倒扣。`,
+  opts:[
+    { t:"去", cost:4, eff:{network:16,health:-9,family:-11},
+      fn:s=>{ s.flags.mishu=true; s.patron.favor=cl(s.patron.favor+30); },
+      msg:"你成了他的影子。他几点起、喝什么茶、看谁不顺眼、怕什么，你全知道。\n\n你也从此没有了自己的作息。\n\n【与领导的关系大幅提升】" },
+    { t:"婉拒", eff:{health:4,family:6,network:-6},
+      msg:"他没再问第二次。他这种人不问第二次。" },
+  ]},
+
+/* ---------- 风险线 ---------- */
+{ id:"hongbao", w:9, cond:s=>s.rank>=2, tag:"风险",
+  title:"一个信封",
+  text:s=>{ const t=nth("hongbao");
+    if(t<=1) return `一个办事的人在你办公室坐了很久，走的时候，桌上的文件底下多了个信封。\n\n厚度大概是你三个月工资。`;
+    if(t===2) return `又一个信封，这次压在茶杯底下。\n\n整套动作你都认得，因为上一个你处理过。\n\n唯一不一样的是厚度。`;
+    return `这次没有信封了，是一张卡，夹在一本书里。\n\n送书的人走到门口回头说了一句：「您看着办。」\n\n这四个字这些年你听得越来越顺耳，这件事本身就够你想一会儿的。`; },
+  opts:[
+    { t:"收下", eff:{money:5.5,risk:26},
+      msg:"你把它锁进了抽屉。那天下午你什么都没干成，一直在听走廊里的脚步声。\n\n后来你就习惯了。习惯是最危险的东西。" },
+    { t:"追出去还给他", eff:{risk:-6,network:-3,merit:3},
+      msg:"你在楼梯口追上他。他很尴尬，你也很尴尬。\n\n那件事最后按规矩办了。他后来逢人就说你这个人「没意思」。" },
+    { t:"上交", eff:{risk:-12,merit:5,network:-8},
+      msg:"纪检的同志表扬了你。办公室里的人对你的态度发生了一点微妙的变化，大家说话的时候会多看你一眼。\n\n干净是有成本的。" },
+  ]},
+
+{ id:"card", w:8, cond:s=>s.rank>=3, tag:"风险",
+  title:"购物卡",
+  text:`装修公司的老板过年来拜访，放下两盒茶叶。\n\n茶叶盒很沉。你打开看了，里面是卡。`,
+  opts:[
+    { t:"留下", eff:{money:3,risk:19},
+      msg:"你把卡放进了书柜最上层。\n\n这一年你在家里换了个新书柜，新书柜也有最上层。" },
+    { t:"让办公室退回去", eff:{risk:-7,network:-4},
+      msg:"他后来在饭桌上说：这位领导原则性很强。\n\n这句话在他们那个圈子里的意思是：这个人办不了事。" },
+  ]},
+
+{ id:"spouse_biz", w:7, cond:s=>s.rank>=3 && s.flags.married, once:true, tag:"风险",
+  title:"配偶经商",
+  text:`{配偶}想和朋友合伙开个公司，业务跟你分管的领域「有一点点」关系。\n\n她说得很小心：「就挂个名，我不出面。」`,
+  opts:[
+    { t:"同意", eff:{money:22,risk:32,family:9}, fn:s=>{s.flags.spouseBiz=true; if(!s.flags.marryYear)s.flags.marryYear=s.year;},
+      msg:"钱来得比你想象的快很多。\n\n快到你有时候会想，这真的是{TA}自己挣的吗。这个念头你没敢深想。" },
+    { t:"不行，让她换个方向", eff:{family:-11,risk:-5},
+      msg:"{TA}那天晚上说了一句：我跟了你，是不是把这辈子也搭进去了。\n\n你没答上来。" },
+  ]},
+
+{ id:"anon", w:6, cond:s=>s.risk>=30, tag:"风险",
+  title:"匿名信",
+  text:`纪委收到一封反映你的匿名信。内容不算具体，但也不算完全没影。\n\n办公室主任把你叫去，语气很随意地提了一句。`,
+  opts:[
+    { t:"主动去说明情况", eff:{risk:-16,network:-5,health:-4},
+      msg:"你谈了三个小时。出来的时候后背全湿了。\n\n事情压下去了。但从那天起，你的名字在某个本子上被记了一笔。" },
+    { t:"找关系摆平", cost:2, eff:{risk:-6,network:-11,money:-4},
+      msg:"事情摆平了，但欠了一个很大的人情。\n\n人情这个东西，总有还的一天，而且不是你说了算。" },
+    { t:"不理，清者自清", eff:{risk:6,health:-5},
+      msg:"什么都没发生。\n\n接下来的四个月，你每次听到走廊里的皮鞋声都会停下手里的活。" },
+  ]},
+
+{ id:"oldaccount", w:7, cond:s=>s.rank>=5 && s.risk>=25, tag:"风险",
+  title:"旧账",
+  text:`你现在的位置很高。高到当年那些不起眼的事，分量完全变了。\n\n一个多年不联系的人给你打电话，说想见一面。`,
+  opts:[
+    { t:"见，把该了结的了结", cost:2, eff:{risk:-20,money:-14,health:-4},
+      msg:"你花了很大代价把一件八年前的小事彻底抹平。\n\n你在回来的车上想：当年那笔钱，还不够今天这顿饭的零头。" },
+    { t:"不见，让秘书回绝", eff:{risk:11},
+      msg:"他没再联系。\n\n三个月后，你听说他去了别的地方，说了一些话。" },
+  ]},
+
+/* ---------- 中层 ---------- */
+{ id:"project", w:11, cond:s=>s.rank>=2 && s.rank<=6, tag:"工作",
+  title:"烫手的项目",
+  text:s=>{ const t=nth("project");
+    if(t<=1) return `一个拖了三年的老大难项目，涉及拆迁、历史遗留、和两任前领导。\n\n一把手在会上环视一圈：「谁来牵这个头？」\n\n没有人说话。`;
+    if(t===2) return `又一个。拆迁、历史遗留、两任前领导——连措辞都跟上次那个一样。\n\n一把手环视一圈的时候，有两个人下意识看了你一眼。\n\n没有人说话，但这次的沉默是有方向的。`;
+    return `这次会上没有人环视一圈。\n\n所有人从一开始就看着你。\n\n因为上一个这样的项目，是你牵的头。`; },
+  opts:[
+    { t:"我来", cost:5, eff:{health:-9,family:-7},
+      fn:s=>{ if(chance(.55 + s.ability/300 + s.network/400)){ s.merit=cl(s.merit+24); s.flags.bigwin=true; s.pendMsg="你干成了。\n\n签字那天一把手在会上说了你的名字，说了三次。\n\n【重大政绩 · 这是能记进档案的东西】"; } else { s.merit=cl(s.merit-8); s.risk+=10; s.pendMsg="中途出了群体性事件，项目停了。\n\n没有人追究你的责任——因为所有人都知道这事本来就干不成。但也没有人再提起你。"; } } },
+    { t:"低头看手机", eff:{merit:-4,health:3},
+      msg:"最后是隔壁的老陈接了。\n\n三年后他因为这个项目提了副处。也可能是因为别的，谁说得清呢。" },
+  ]},
+
+{ id:"subordinate", w:9, cond:s=>s.rank>=3, tag:"管理",
+  title:"下属捅了娄子",
+  text:`你手下一个年轻人在一份对外文件里写错了一个数字。这个数字上了新闻。\n\n他二十六岁，昨天还在办公室里给你带早饭。`,
+  opts:[
+    { t:"扛下来，说是我审核不严", eff:{merit:-9,network:8,risk:3},
+      msg:"你被通报批评了一次。\n\n那个年轻人后来跟了你很多年。很多年后他在另一个岗位上，替你说过一次话。" },
+    { t:"按规矩处理，该谁的责任谁负", eff:{merit:3,network:-4},
+      msg:"处理得没有毛病。他被调离了岗位。\n\n办公室里再没人给你带早饭。" },
+    { t:"往上推，说是分管领导定的", eff:{risk:9,network:-13},
+      msg:"你脱身了。\n\n但这个单位里所有的人都看见了。以后没有人愿意替你扛事，因为大家知道你不会替他们扛。" },
+  ]},
+
+{ id:"side", w:8, cond:s=>s.rank>=3 && s.rank<=7, once:true, tag:"抉择",
+  title:"站队",
+  text:`班子里两位领导公开对上了。\n\n一位是提拔你的老领导，年纪偏大，眼看到站；一位是空降的新副手，年轻，背景不明，但势头很猛。\n\n两个人这一周都单独找你谈过话。`,
+  opts:[
+    { t:"跟老领导，做人要讲良心", cost:2, eff:{network:9,risk:5},
+      fn:s=>{ s.flags.sideOld=true; s.patron.favor=cl(s.patron.favor+22); },
+      msg:"你选了报恩。\n\n老领导拍了拍你的手背，什么也没说。他这个年纪的人，已经不需要说什么了。" },
+    { t:"跟新来的，眼睛要往前看", cost:2, eff:{network:15,risk:9,merit:4},
+      fn:s=>{ s.flags.sideNew=true; s.patron={name:"高副市长",favor:52,alive:true}; },
+      msg:"你换了船。\n\n老领导后来在走廊里遇见你，笑着点了点头。那个笑让你有一瞬间不敢看他的眼睛。" },
+    { t:"两边都不得罪", cost:1, eff:{network:-9},
+      msg:"你以为你很聪明。\n\n半年后尘埃落定，赢的那位在名单上看到你的名字时，想了两秒钟，然后划掉了。" },
+  ]},
+
+{ id:"inspect", w:9, cond:s=>s.rank>=2 && s.rank<=6, tag:"工作",
+  title:"迎检",
+  text:s=>{ const t=nth("inspect");
+    if(t<=1) return `上级检查组下周到。台账缺了大半年的，现在补根本来不及。\n\n办公室的人在等你一句话。`;
+    if(t===2) return `又要迎检。台账还是缺，还是补不完。\n\n这次办公室的人没有等你开口，他们已经在补了。\n\n他们知道你会说什么。`;
+    return `迎检通知下来的时候，你发现自己想的第一件事不是台账。\n\n是这回带队的组长是谁。`; },
+  opts:[
+    { t:"连夜补，该怎么写怎么写", cost:4, eff:{merit:8,risk:14,health:-6},
+      msg:"三个通宵，五个人，补出了一米高的台账。检查组很满意。\n\n所有人都知道那是假的，包括检查组。这是一场大家配合完成的演出。" },
+    { t:"如实汇报，该扣分扣分", eff:{merit:-8,risk:-8,network:-6},
+      msg:"县里排名掉了四位。一把手在会上没点你的名，但看了你三次。\n\n你晚上睡得很好。这在这个行业里算是一种奢侈。" },
+  ]},
+
+{ id:"xinfang", w:9, cond:s=>s.rank>=2 && s.rank<=6, tag:"工作",
+  title:"信访",
+  text:s=>{ const t=nth("xinfang");
+    if(t<=1) return `一位六十多岁的上访户在大院门口坐了三天。他的诉求二十年前就该解决，但当年的文件、当年的人、当年的政策，全都找不到了。\n\n他认得你，因为你是唯一一个跟他说过话的干部。`;
+    if(t===2) return `又一位。年纪、诉求、找不到的文件，跟上次那位几乎一模一样。\n\n不同的是这一次他不认识你。他要找的不是说过话的人，是「能定的人」。\n\n而现在你差不多算是了。`;
+    return `这次坐在门口的人你认得。\n\n是二十年前那位的儿子。\n\n事情还是那件事。`; },
+  opts:[
+    { t:"想办法在现有政策里给他找一条路", cost:4, eff:{merit:9,health:-5,network:-3},
+      msg:"你翻了三个月的旧档案，最后从一个撤销了的部门的文件里找到了依据。\n\n他拿到钱那天给你磕头，你把他扶起来了。\n\n没有人给你记功。这种事记不了功。" },
+    { t:"按程序稳控住，别让他上省里", cost:2, eff:{merit:5,risk:6},
+      msg:"你完成了任务。他被送回了老家，由乡镇看着。\n\n第二年他又来了。第三年他没再来——他去世了。" },
+    { t:"这不归我管", eff:{merit:-5,health:2},
+      msg:"确实不归你管。\n\n他后来在门口坐了十七天。" },
+  ]},
+
+{ id:"tijian", w:9, cond:s=>s.age>=35, tag:"身体",
+  title:"体检报告",
+  text:s=>{ const t=nth("tijian");
+    if(t<=1) return `单位组织体检。报告出来，有三项箭头朝上，医生建议进一步检查。\n\n下周有个重要的会。`;
+    if(t===2) return `又一年。上次那三项还在，这次多了一项。\n\n医生说话比上次慢，中间停了一下才继续。`;
+    return `这次医生没说「建议进一步检查」。\n\n他抬头问你：上次的报告带来了吗。`; },
+  opts:[
+    { t:"请假去做全面检查", cost:3, eff:{health:12,merit:-5},
+      msg:"查出来是早期问题，及时干预住了。\n\n医生说：你再拖半年就麻烦了。\n\n那个会最后是别人去的。" },
+    { t:"先把会开完再说", eff:{health:-11,merit:6},
+      msg:"会开得很成功。\n\n报告你塞进了抽屉。三个月后你翻抽屉找别的东西，又看见了它，又塞了回去。" },
+  ]},
+
+{ id:"parent", w:10, cond:s=>s.age>=33 && s.age<=58, tag:"家庭",
+  title:"父亲",
+  text:`老家来电话，父亲住院了。要动手术，需要有人签字。\n\n同一周，省里来人考察干部。`,
+  opts:[
+    { t:"回去，考察让别人接待", cost:4, eff:{family:17,health:-4,merit:-9,network:-6},
+      msg:"你在病房陪了十一天。父亲醒过来第一句话是：「你单位不忙啊？」\n\n你说不忙。\n\n那次考察名单上没有你。但你父亲又活了十四年。" },
+    { t:"打钱回去，让弟弟处理", eff:{family:-15,money:-6,merit:7},
+      msg:"手术很成功。\n\n你弟弟后来在饭桌上说了一句「哥你忙」，语气很平。太平了。\n\n这句话你记了很久。" },
+    { t:"考察完连夜赶回去", cost:3, eff:{family:5,health:-8,merit:3},
+      msg:"你凌晨三点赶到医院，手术已经做完了。\n\n你在走廊长椅上睡了两小时，天亮又赶回去开会。\n\n这一年你瘦了十四斤。" },
+  ]},
+
+{ id:"child", w:9, pri:2.5, cond:s=>kidAge(s)>=7 && kidAge(s)<=12, tag:"家庭",
+  title:"家长会",
+  text:`{子女}的家长会，你连着缺席了四次。\n\n这次{TA子}特意在早饭时说了一句：「爸，今天下午三点。」\n\n下午三点你有个协调会。`,
+  opts:[
+    { t:"去家长会，协调会让副职去", eff:{family:14,merit:-4},
+      msg:"你坐在小板凳上，腿都伸不开。老师念到名字的时候，你看见{TA子}回头看了你一眼。\n\n就那一眼。你觉得值。" },
+    { t:"去协调会", eff:{merit:6,family:-13},
+      msg:"晚上回家，{TA子}已经睡了。桌上留了张纸条：「没关系，我知道你忙。」\n\n这句话比骂你难受一百倍。" },
+  ]},
+
+{ id:"house", w:8, cond:s=>s.age>=28 && s.age<=45 && !s.flags.house, once:true, tag:"生活",
+  title:"买房",
+  text:`该买房了。首付还差一截。\n\n有个开发商的朋友说，可以给你「内部价」。`,
+  opts:[
+    { t:"按市场价买，借亲戚的钱凑首付", eff:{money:-23,family:6,risk:-3},
+      fn:s=>{s.flags.house=true},
+      msg:"你背上了三十年的贷款。\n\n每个月还款日那天，你会比平时更能理解为什么有些人会走上另一条路。" },
+    { t:"用内部价", eff:{money:-10,risk:22},
+      fn:s=>{s.flags.house=true; s.flags.cheapHouse=true},
+      msg:"省了将近二十万。\n\n合同放在保险柜最底下。这套房子你住了很多年，每次装修都想起那份合同。" },
+    { t:"先不买，继续租", eff:{money:4,family:-9},
+      msg:"家里那年没说什么。\n\n三年后房价涨了六成，还是没说什么。不说的话往往最重。" },
+  ]},
+
+{ id:"night", w:6, cond:s=>s.age>=38, tag:"独处",
+  title:"深夜",
+  text:`凌晨两点，你在阳台上抽了半支烟。\n\n楼下路灯还亮着。你忽然想起二十二岁那年，坐在办公室最里面那张桌子前，心里想的是「我一定要出人头地」。\n\n你现在想不起来当时到底为什么那么想。`,
+  opts:[
+    { t:"回去睡了。明天还有会", eff:{health:-2},
+      msg:"第二天你照常上班。这种夜晚每年会有那么几次，你已经学会了不在白天想起它。" },
+    { t:"给家里发了条消息", eff:{family:7,health:2},
+      msg:"五分钟后回过来：「快睡吧。」\n\n后面还跟了一句：「我在呢。」\n\n你把烟掐了。" },
+    { t:"打开电脑，把明天的材料又改了一遍", cost:1, eff:{merit:5,health:-4},
+      msg:"改到四点。\n\n第二天的会上你讲得很好。没有人知道那份稿子是几点定的。" },
+  ]},
+
+{ id:"jiuzhuo", w:7, cond:s=>s.rank>=2 && s.rank<=6 && s.age<=56, tag:"应酬",
+  title:"酒桌",
+  text:`招商引资的饭局，对方老总端着杯子过来：「这杯干了，项目就定了。」\n\n你上个月刚查出脂肪肝。`,
+  opts:[
+    { t:"干了", eff:{merit:11,health:-9,money:0},
+      msg:"项目签了。你在洗手间吐的时候，听见外面有人说「这个人实在」。\n\n实在是这行的通行证，也是这行的死亡证明。" },
+    { t:"以茶代酒", eff:{merit:-5,health:2,network:-4},
+      msg:"气氛冷了三秒。项目还是签了，但对方后来把追加投资给了邻县。\n\n三秒钟，几个亿。" },
+    { t:"让年轻的下属替你挡", eff:{merit:8,health:-1,network:-4},
+      fn:s=>{s.flags.liuDrank=true; s.flags.liuYear=s.year;},
+      msg:"小刘替你喝了八两，当晚进了医院。\n\n他第二天照常上班，笑着说没事。他也才二十七岁。" },
+  ]},
+
+{ id:"award", w:6, cond:s=>s.merit>=45, tag:"荣誉",
+  title:"表彰",
+  text:`你被评为全市优秀公务员，要上台发言。\n\n讲话稿是办公室写的，里面有一句「始终把人民放在心中最高位置」。`,
+  opts:[
+    { t:"照稿念完", eff:{merit:6,network:4},
+      msg:"掌声热烈。你下台的时候忽然想不起来上一次真正为一个具体的人办成事是什么时候。" },
+    { t:"脱稿讲了个真事", eff:{merit:9,network:-3,health:1},
+      msg:"你讲了那个上访了二十年的老头。台下安静了几秒才鼓掌。\n\n会后有个老同志握着你的手说：好久没听到有人讲人话了。" },
+  ]},
+
+/* ---------- 领导线 ---------- */
+{ id:"patron_up", w:7, cond:s=>s.patron.alive && s.patron.favor>=40 && s.rank>=2, once:true, tag:"人事",
+  title:"老领导高升",
+  text:`你的老领导调去省里了，位置比原来高两级。\n\n临走前他单独把你叫去，说了半小时的话。最后一句是：「你的事，我记着。」`,
+  opts:[
+    { t:"送到车站", eff:{network:17},
+      msg:"你在站台上站了很久。\n\n这条线以后能用几次，你心里有数。用一次少一次，但有，总比没有强。" },
+    { t:"该干嘛干嘛，不去凑热闹", eff:{network:5,merit:3},
+      msg:"送行的人很多，你没去。\n\n他后来问起过一次：小李怎么没来？有人替你圆了。这个人情你也欠下了。" },
+  ]},
+
+{ id:"patron_down", w:6, cond:s=>s.patron.alive && s.rank>=3 && s.age>=40, once:true, tag:"人事",
+  title:"出事了",
+  text:`你的老领导被带走了。\n\n消息是早上八点二十传开的，到中午，他办公室的牌子已经摘了。\n\n下午，组织上找你谈话。`,
+  opts:[
+    { t:"实事求是，把知道的说清楚", cost:2, eff:{risk:-14,network:-18,health:-7},
+      fn:s=>{ s.patron.alive=false; },
+      msg:"你谈了两次，一共九个小时。\n\n你说的都是真的，也确实没有隐瞒。但从那以后，你在这个系统里少了一条腿。" },
+    { t:"什么都说不知道", cost:2, eff:{risk:20,network:-6,health:-9},
+      fn:s=>{ s.patron.alive=false; },
+      msg:"你守住了。\n\n有些人因此高看你一眼，另一些人因此把你划进了同一个圈。这两种人后来都用得上，也都用得着你。" },
+  ]},
+
+/* ---------- 高层 ---------- */
+{ id:"sign", w:11, cond:s=>s.rank>=5, tag:"决策",
+  title:"签字",
+  text:`一份文件放在你面前。\n\n技术部门说没问题，法制部门说有瑕疵，分管副职说「领导您定」。\n\n签了，这个项目今年就能开工，是实打实的政绩；不签，拖到明年，可能就没有明年了。`,
+  opts:[
+    { t:"签", eff:{merit:15,risk:17},
+      msg:"项目当年开工。剪彩那天你站在中间。\n\n那份有瑕疵的意见书，在档案柜里躺了很多年。它一直在那儿。" },
+    { t:"退回去，补齐手续再说", eff:{merit:-7,risk:-9,network:-6},
+      msg:"手续补了八个月。项目错过了窗口期，投资方撤了。\n\n没有人说你错。也没有人说你对。" },
+    { t:"上会集体研究", cost:2, eff:{merit:4,risk:-4,network:3},
+      msg:"班子会一致同意。你签的是「同意会议决定」。\n\n这五个字后来救过你。集体决策是这个系统最伟大的发明之一。" },
+  ]},
+
+{ id:"protect", w:9, cond:s=>s.rank>=6, tag:"决策",
+  title:"老部下",
+  text:`当年跟着你的那个年轻人，现在是某局的一把手。他出事了。\n\n事情不算特别大，但要看怎么定性。他妻子在你办公室外面等了三个小时。`,
+  opts:[
+    { t:"打个招呼，尽量往轻里定", cost:2, eff:{network:11,risk:22},
+      msg:"事情按最轻的口径处理了。他保住了级别，调去了一个闲职。\n\n他后来每年过年都给你发短信。你从来没回过。你不敢回。" },
+    { t:"不插手，按规矩来", eff:{risk:-9,network:-13,family:-3},
+      msg:"他被开除了公职。\n\n他妻子在楼下骂了很久。保安把她劝走了。\n\n那天晚上你想起十几年前，他给你带早饭的样子。" },
+  ]},
+
+{ id:"disaster", w:8, cond:s=>s.rank>=4, tag:"危机",
+  title:"事故",
+  text:`凌晨一点，电话响了。辖区内出了事，已经有伤亡。\n\n现在有两件事要做：处置，和上报。这两件事在时间上有先后，在政治上也有先后。`,
+  opts:[
+    { t:"立刻上报，同时赶赴现场", cost:5, eff:{merit:14,health:-11,risk:-6},
+      fn:s=>{s.flags.crisis=true},
+      msg:"你在现场待了七十二小时，没合眼。\n\n因为上报及时，省里的救援力量两小时就到了。事后追责，你被记了一笔，但不重。\n\n【已完成重大危机处置 · 这是档案里最硬的一笔】" },
+    { t:"先把情况摸清楚再报", cost:4, eff:{merit:5,risk:26,health:-9},
+      msg:"你晚报了六个小时。\n\n事故最后处理完了，数字很好看。那六个小时没有出现在任何一份材料里。\n\n但有人知道。总有人知道。" },
+  ]},
+
+{ id:"family_biz", w:7, cond:s=>s.rank>=6, tag:"风险",
+  title:"侄子",
+  text:`你侄子的公司拿到了一个跟你分管领域相关的标。\n\n他说是自己实力中标的。可能是真的。也可能不是。\n\n组织上按规定要填一张表。`,
+  opts:[
+    { t:"如实填报，并要求他退出", eff:{risk:-18,family:-13,money:-4},
+      msg:"你哥在电话里骂了你二十分钟，最后一句是「你别忘了你是谁供出来的」。\n\n你挂了电话，在办公室坐到天黑。" },
+    { t:"照常填，那栏空着", eff:{risk:30,money:9,family:6},
+      msg:"表交上去了，没人问。\n\n从此每次听说哪个地方在查这类事，你都会多看两眼新闻。" },
+  ]},
+
+/* ---------- 浪潮专属 ---------- */
+{ id:"w_ai", w:14, waveTag:"ai", cond:s=>s.rank<=5, tag:"变局",
+  title:"用不用",
+  text:`「智政云」上线了。一份过去要写两天的材料，现在四十秒。\n\n但办公室主任在会上说：机器写的东西没有温度，还是要人来把关。\n\n他说这话的时候，自己刚用它写完这份讲话稿。`,
+  opts:[
+    { t:"全面拥抱，把省下的时间用来跑关系", cost:3, eff:{network:13,merit:4},
+      msg:"你成了单位里第一个把它用明白的人。\n\n效率提高了，但你也隐隐觉得，自己身上最值钱的那点东西正在贬值。" },
+    { t:"研究它的底层逻辑，做本地化训练", cost:4, eff:{merit:12,health:-4},
+      fn:s=>{s.ability=cl2(s.ability+11)},
+      msg:"你成了全市系统内少数真懂这个的人。\n\n省里开会点名让你去讲。【能力显著提升】" },
+    { t:"坚持手写。有些东西机器写不出来", cost:4, eff:{merit:5,health:-6},
+      msg:"你的稿子确实是最好的。\n\n但没有人有耐心分辨最好和够用之间的区别。" },
+  ]},
+
+{ id:"w_reform", w:14, waveTag:"reform", tag:"变局",
+  title:"分流",
+  text:`机构改革，你们科室要撤并。名单还没定，但屋子里所有人都在算自己的分。\n\n有人已经开始跑了。`,
+  opts:[
+    { t:"跑关系，争取留在核心部门", cost:4, eff:{network:6,money:-2.5,risk:9},
+      fn:s=>{ if(chance(.6+s.network/300)){ s.pendMsg="你留下了。\n\n留下的人不敢露出高兴，走的人也不敢露出难过。那几天办公室里安静得可怕。"; } else { s.merit=cl(s.merit-11); s.pendMsg="你还是被分流了。\n\n新单位在城郊，通勤单程一小时二十分钟。你在公交车上有很多时间可以想事情。"; } } },
+    { t:"服从组织安排", eff:{merit:-6,network:4,health:2},
+      msg:"你被分到了一个清水衙门。\n\n那两年你睡得很好，升不上去，但也没有人来找你。你后来常常怀念那两年。" },
+  ]},
+
+{ id:"w_clean", w:14, waveTag:"clean", cond:s=>s.risk>=18, tag:"变局",
+  title:"窗口期",
+  text:`专项行动的通知下来了。文件里有一句「主动说清楚问题的，依规从轻」。\n\n你把那句话读了很多遍。`,
+  opts:[
+    { t:"主动交代", eff:{risk:-40,merit:-13,network:-16,money:-9},
+      msg:"你谈了很久，退了一些东西，受了处分，降了半级。\n\n从组织谈话室出来那天下着小雨。你没打伞，走了很远。\n\n那是十几年来你睡得最好的一晚。" },
+    { t:"再等等，看风向", eff:{risk:9,health:-6},
+      msg:"你等了。\n\n窗口期过去以后，窗口就关上了。" },
+  ]},
+
+{ id:"w_climate", w:14, waveTag:"climate", cond:s=>s.rank>=1, tag:"变局",
+  title:"防汛",
+  text:`第七轮强降雨。指挥部的灯已经亮了三十天。\n\n你手下有人在堤上晕倒了。你自己也已经四天没回家。`,
+  opts:[
+    { t:"继续上堤，你在，人心就在", cost:5, eff:{merit:19,health:-15,family:-8},
+      msg:"洪峰过境那晚你在堤上。\n\n后来那张照片上了省报。你在照片里瘦得脱形，眼睛却很亮。\n\n家里人把那张报纸剪下来了，你后来才知道。" },
+    { t:"轮换，让自己缓两天", cost:3, eff:{merit:8,health:-6,family:2},
+      msg:"你休息了两天。这两天什么事也没出。\n\n但表彰名单出来的时候，你排在第七位。" },
+  ]},
+
+{ id:"w_newarea", w:14, waveTag:"newarea", cond:s=>s.rank>=2 && s.rank<=6, tag:"变局",
+  title:"去不去新区",
+  text:`云江新区抽调干部。三年，一片滩涂，什么都得从零开始。\n\n干成了是火箭，干不成是坟场。`,
+  opts:[
+    { t:"去", cost:5, eff:{health:-11,family:-14},
+      fn:s=>{ if(chance(.5+s.ability/300)){ s.merit=cl(s.merit+27); s.network=cl(s.network+9); s.flags.bigwin=true; s.pendMsg="三年后，滩涂上有了路、有了灯、有了人。\n\n你在新区管委会的窗户前站着，看见楼下有小孩在跑。\n\n【重大政绩】"; } else { s.merit=cl(s.merit-9); s.pendMsg="三年后，规划调整了。你们建到一半的东西成了别人报告里的教训。\n\n你回原单位报到那天，人事科的小姑娘问：您是新来的吗？"; } } },
+    { t:"不去", eff:{family:8,merit:-3},
+      msg:"你留在了原地。原地也挺好，原地没有风险。\n\n原地也没有别的。" },
+  ]},
+
+{ id:"w_money", w:12, waveTag:"money", tag:"变局",
+  title:"过紧日子",
+  text:`绩效缓发第三个月了。\n\n办公室的年轻人开始在群里发兼职链接，被主任撤回了。`,
+  opts:[
+    { t:"带头表态，理解支持", eff:{network:6,money:-1.5,merit:3},
+      msg:"你在会上说得很好。回家路上你在手机银行里看了一眼余额，又退了出来。" },
+    { t:"私下替下属向上反映", cost:2, eff:{network:9,merit:-3},
+      msg:"钱还是没发下来，但下属们知道你替他们说过话。\n\n有些账不是用钱记的。" },
+  ]},
+
+/* ---------- 加时赛 ---------- */
+{ id:"ot_successor", w:12, cond:s=>s.overtime, tag:"晚局",
+  title:"接班人",
+  text:`你在这个位置上待得够久了。久到需要开始考虑另一件事：\n\n你走之后，谁来。`,
+  opts:[
+    { t:"扶一个自己人上去", cost:3, eff:{network:13,risk:11},
+      msg:"你花了很大力气。他上去了。\n\n三年后他做了一个你绝不会做的决定。你才明白，你培养的是一个人，不是一个自己的复制品。" },
+    { t:"按规矩来，选最合适的", eff:{merit:9,network:-6},
+      msg:"接任的人跟你没什么私交。\n\n他做得比你好。你听说这件事的时候，心情有点复杂，但主要是欣慰。" },
+    { t:"不想这个问题，我还能干", eff:{merit:4,health:-5},
+      msg:"你把这件事又往后推了一年。\n\n这一年里，有三个本来可以接你班的人调走了。" },
+  ]},
+
+{ id:"ot_body", w:14, cond:s=>s.overtime, tag:"晚局",
+  title:"身体",
+  text:`医生把片子挂上去，看了很久，然后转过身来。\n\n他没有直接说结论，先问了一句：「您现在还上班吗？」`,
+  opts:[
+    { t:"按医嘱，减少工作量", cost:3, eff:{health:14,merit:-9},
+      msg:"你把三个会推给了副手。\n\n身体确实好了一些。但你也第一次清楚地感觉到——这个系统离了你，转得一样好。" },
+    { t:"药带上，会照开", eff:{health:-13,merit:8},
+      msg:"你的抽屉里从此常年放着三种药。\n\n秘书知道哪一种是饭前吃的。" },
+  ]},
+
+{ id:"ot_legacy", w:10, cond:s=>s.overtime, tag:"晚局",
+  title:"故人",
+  text:`当年青阳县办公室的老周去世了。\n\n他到退休还是科员。讣告是他儿子在同学群里发的，只有两行字。`,
+  opts:[
+    { t:"推掉行程，去了", cost:2, eff:{family:9,merit:-4,health:-2},
+      msg:"你去了。灵堂很小，来的人很少。\n\n他儿子认出你，愣了一下，说：我爸生前提过您，说您那时候是他们办公室最能熬夜的。\n\n你在门口站了很久。" },
+    { t:"让秘书送了个花圈", eff:{merit:2},
+      msg:"花圈上的落款是你的职务全称，很长。\n\n老周要是看见，大概会笑一下。" },
+  ]},
+
+/* ---------- 通用生活 ---------- */
+{ id:"fenzi", w:8, cond:s=>s.age>=27, tag:"生活",
+  title:"份子钱",
+  text:s=>{ const t=nth("fenzi");
+    if(t<=1) return `这个月第四张请柬。同事的、下属的、老家亲戚的。\n\n你算了算，这个月的份子钱超过了你半个月工资。`;
+    if(t===2) return `又是四张。\n\n你现在有一本专门记这个的账，从哪年开始记的都忘了。\n\n翻到最前面那几笔，收礼的人有一半已经不在这个系统里了。`;
+    return `请柬还是那么多，但你已经很少亲自去了。\n\n让办公室的人代到，钱照给，规格比从前高。\n\n你想了半天，想不起最近一次坐在婚宴上是什么时候。`; },
+  opts:[
+    { t:"都随，该多少多少", eff:{money:-2.2,network:5,family:-2},
+      msg:"人情社会的运转成本，每年都在涨。你只能跟着涨。" },
+    { t:"挑着随", eff:{money:-.9,network:-3},
+      msg:"有两家你没去。他们没说什么。\n\n三年后你家办事，那两家也没来。" },
+  ]},
+
+{ id:"reunion", w:6, cond:s=>s.age>=45, tag:"生活",
+  title:"三十年",
+  text:`大学同学三十年聚会。当年宿舍六个人，来了四个。\n\n有人已经退了，有人还在拼，有一个人没能来——去年走的。`,
+  opts:[
+    { t:"喝了很多，聊了很多", eff:{health:-4,family:3,network:3},
+      msg:"散场的时候大家在酒店门口站了很久，谁也不想先走。\n\n后来还是走了。回去的车上很安静。" },
+    { t:"提前退场，第二天有会", eff:{merit:4,family:-3},
+      msg:"你在电梯里跟他们挥手。\n\n那是你最后一次见到其中的两个人。" },
+  ]},
+
+{ id:"stock", w:6, cond:s=>s.money>=40 && s.age>=35, tag:"生活",
+  title:"理财",
+  text:`同事推荐了一个「绝对稳」的理财，年化比银行高不少。\n\n他说他自己也买了。`,
+  opts:[
+    { t:"买一点", eff:{},
+      fn:s=>{ if(chance(.6)){ s.money+=9; s.pendMsg="赚了。你有点后悔买少了。"; } else { s.money=Math.max(0,s.money-16); s.pendMsg="爆了。\n\n那个同事比你亏得更多，你都不好意思去找他。"; } } },
+    { t:"不碰，存银行", eff:{money:1.5},
+      msg:"你这辈子在钱上没什么想象力。\n\n后来事实证明，在这个位置上，没有想象力是一种美德。" },
+  ]},
+
+{ id:"quit", w:4, cond:s=>s.age>=30 && s.age<=48 && s.rank<=3, once:true, tag:"抉择",
+  title:"辞职",
+  text:`老同学的公司开出了年薪，是你现在的四倍。\n\n他说：你这个脑子，在里面耗着可惜了。\n\n你回家说了这件事。家里沉默了很久，最后只说：你自己想清楚。`,
+  opts:[
+    { t:"辞了", eff:{},
+      fn:s=>{
+        s.quit = true;
+        const q = s.year;
+        const win = chance(.42 + s.ability/300);
+        s.money = win ? s.money + ri(300,1400) : Math.max(0, s.money*0.3 + ri(0,40));
+        s.family = cl(s.family + (win?10:-14));
+        s.health = cl(s.health - ri(4,16));
+        s.age = ri(71,88); s.year = 2004 + s.age;
+        s.log.push([q, "辞去公职"]);
+        s.log.push([q+ri(3,9), win ? "生意做起来了" : "生意失败，欠了一身债"]);
+        s.pendMsg = "你交了辞职报告。\n\n" + (win
+          ? "后来的二十年，起起落落，但你确实挣到了钱。\n\n你再也没有在周五下午四点半接过一份「不急」的稿子。"
+          : "后来的二十年，起起落落，主要是落。\n\n有一年你路过原单位门口，站了一会儿，没进去。");
+      } },
+    { t:"不辞。都熬到这儿了", eff:{merit:5,money:-1},
+      msg:"你把那条微信删了。\n\n后来的很多年，每次卡在什么地方，你都会想起那年那个数字。\n\n人总要给自己留一个「如果当年」。" },
+  ]},
+
+/* ================= 补充事件 · 早期 ================= */
+{ id:"duty", w:8, cond:s=>s.rank<=2, tag:"办公室",
+  title:"值班表",
+  text:`春节值班表贴出来了。除夕和初一都是你。\n\n办公室主任说：年轻人嘛，家近的先顶上。\n\n你家离这里一千二百公里。`,
+  opts:[
+    { t:"什么也没说，值了", eff:{merit:5,family:-9,network:3},
+      msg:"除夕那天单位只有你和门卫老李。他给你端了碗饺子，说小伙子别难过，我在这儿值了十九个年三十。\n\n你说谢谢李叔。\n\n你没敢问他后来怎么样了。" },
+    { t:"跟主任说家远，换一下", eff:{family:6,network:-7},
+      msg:"换成了另一个人。主任答应得很爽快。\n\n爽快到你后来才反应过来——他记住了这件事，而且只记住了这件事。" },
+    { t:"值，但顺手把值班室的档案理了一遍", cost:2, eff:{merit:9,family:-9,health:-3},
+      fn:s=>{s.flags.archiveSorted=true; s.flags.archiveYear=s.year;},
+      msg:"你在值班室待了六天，把十几年的旧档案分类编号，做了一份目录。\n\n年后局长找不到一份九八年的文件，全单位只有你三分钟就翻出来了。\n\n从那以后，他记住了你的名字。" },
+  ]},
+
+{ id:"study_degree", w:8, cond:s=>s.rank<=3 && s.age<=40, once:true, tag:"机会",
+  title:"在职研究生",
+  text:`单位有个在职硕士的名额，周末上课，两年半。\n\n学历这个东西平时没用，只在你差一点点的时候有用。而你不知道那一天什么时候来。`,
+  opts:[
+    { t:"报，硬啃下来", cost:4, eff:{health:-7,family:-9},
+      fn:s=>{s.ability=cl2(s.ability+18); s.flags.degree=true;},
+      msg:"两年半，你没有过一个完整的周末。\n\n毕业那天你自己去照相馆拍了张学位照，没人陪。\n\n【能力大幅提升 · 档案里多了一行学历】" },
+    { t:"不报，周末想歇歇", eff:{health:5,family:7},
+      msg:"你睡了两年半的懒觉。\n\n后来有一次干部推荐，你和另一个人各方面都差不多。组织部的人翻了翻两份档案，在其中一份上停了两秒。" },
+  ]},
+
+{ id:"gongche", w:7, cond:s=>s.rank>=1 && s.rank<=4, tag:"风险",
+  title:"钥匙",
+  text:`周末孩子要去医院，家里没车。\n\n单位那辆车就停在院里，钥匙在你抽屉里。开出去一趟，四十分钟。`,
+  opts:[
+    { t:"开了", eff:{family:8,risk:11},
+      msg:"四十分钟，来回一百二十公里，油钱你自己贴了。\n\n回来的时候你把里程表看了三遍。\n\n后来两年，每次单位查公车使用记录，你都会想起这四十分钟。" },
+    { t:"打车去", eff:{money:-.3,family:4},
+      msg:"打车花了一百八。\n\n你在车上算了一下，这一百八买的是什么。你觉得挺值。" },
+  ]},
+
+/* ================= 补充事件 · 中层 ================= */
+{ id:"zhaobiao", w:10, cond:s=>s.rank>=2 && s.rank<=6, tag:"风险",
+  title:"打招呼",
+  text:s=>{ const t=nth("zhaobiao");
+    if(t<=1) return `一个项目要招标。开标前三天，有位老领导给你打电话，问了问天气，问了问你父母，然后说：\n\n「有个朋友想参与一下，你看着办。」\n\n「你看着办」这四个字，在这个系统里没有任何一种解释是轻松的。`;
+    if(t===2) return `又一个电话。还是先问天气，再问父母，最后那句「有个朋友想参与一下」。\n\n你已经能在他问到第二句的时候就知道后面是什么了。\n\n区别只在于，这次打来的人，比上次那位说话更不用商量。`;
+    return `这一次对方连天气都没问。\n\n他说：「老规矩。」\n\n你握着电话，忽然想弄清楚一件事——从哪一年开始，你这里有了「老规矩」。`; },
+  opts:[
+    { t:"在评分细则上做了点技术处理", eff:{merit:6,network:11,risk:27},
+      msg:"标顺利地落在了那家公司。所有程序都合规，找不出一处毛病。\n\n老领导后来在一个场合拍了拍你的肩膀，什么也没说。\n\n那一下拍得挺重的。" },
+    { t:"按规矩走，事后再跟他解释", eff:{merit:5,network:-14,risk:-6},
+      msg:"你给他回了个电话，说这次监督得严，实在动不了。\n\n他说：理解，理解。\n\n他说了两遍「理解」，你就知道他一点也不理解。" },
+    { t:"把电话录音存了下来", cost:1, eff:{risk:-9,network:-18},
+      fn:s=>{s.flags.tape=true},
+      msg:"你没跟任何人说这件事。录音存在一个你自己都很少打开的文件夹里。\n\n你希望这辈子都用不上它。\n\n【你手里有了一样东西 —— 保命的，也是烫手的】" },
+  ]},
+
+{ id:"baoxiao", w:8, cond:s=>s.rank>=2 && s.rank<=5, tag:"风险",
+  title:"发票",
+  text:`财务把一叠单子退回来了：有几张的用途写得不清楚，需要你签字确认。\n\n那几张不是你的。是科室里大家一起凑的。`,
+  opts:[
+    { t:"签了，都是几百块的事", eff:{network:8,risk:14},
+      msg:"你签了字。金额确实很小，小到你三天后就忘了。\n\n六年后有人翻旧账的时候，从这几张纸开始翻的。" },
+    { t:"退回去，让他们自己说清楚", eff:{merit:3,network:-11},
+      msg:"科室里安静了一整个下午。\n\n从那以后，中午吃饭没有人叫你了。这个变化很小，小到没法跟任何人抱怨。" },
+  ]},
+
+{ id:"xunshi", w:10, cond:s=>s.rank>=3 && s.rank<=7, tag:"危机",
+  title:"巡视组",
+  text:s=>{ const t=nth("xunshi");
+    if(t<=1) return `巡视组进驻，为期两个月。\n\n第三天，他们单独找你谈话。谈话的人很年轻，很客气，笔记本上密密麻麻。\n\n他问的第一个问题是：你觉得你们单位最大的问题是什么。`;
+    if(t===2) return `巡视组又进驻了。\n\n这次找你谈话的人比上次那个还年轻，笔记本还是密密麻麻。\n\n第一个问题一字不差。你上次是怎么答的，你自己还记得。`;
+    return `这次他们没有单独找你谈。\n\n这次找你，是让你谈别人。`; },
+  opts:[
+    { t:"讲真话", cost:2, eff:{merit:11,network:-17,risk:-11},
+      msg:"你讲了四十分钟。有些事你压了很多年。\n\n巡视反馈意见出来以后，单位整改了三条，其中两条是你说的。\n\n一把手在会上说：有的同志，很有想法。\n\n这句话不是表扬。" },
+    { t:"讲些正确的废话", eff:{network:5,risk:4},
+      msg:"你讲了二十分钟，全是可以写进任何一份材料里的句子。\n\n年轻人记了两页，客气地送你出门。\n\n你走在楼道里，忽然觉得自己有点面熟——像你二十二岁时最讨厌的那种人。" },
+    { t:"顺手把某个人的问题反映了", cost:1, eff:{network:-9,risk:9,merit:6},
+      msg:"你反映的事是真的。\n\n那个人半年后被处理了。\n\n单位里没有人知道是谁说的，但所有人都开始猜。猜了很多年。" },
+  ]},
+
+{ id:"yuqing", w:9, cond:s=>s.rank>=3 && s.rank<=7, tag:"危机",
+  title:"三十七分钟",
+  text:`一段视频在网上传开了。执法过程有争议，画面很难看。\n\n从视频出现到市里打来电话，一共三十七分钟。\n\n现在你要决定这份通报怎么写。`,
+  opts:[
+    { t:"如实通报，该处理的处理", cost:3, eff:{merit:9,network:-13,risk:-9},
+      msg:"通报当天发出，认了错，公布了处理结果。\n\n舆情三天就平了。\n\n但被处理的那两个执法队员，一个是老队长的儿子。这笔账挂在那儿。" },
+    { t:"先按「个别人员行为」定性，稳住", cost:2, eff:{merit:4,risk:17},
+      msg:"通报写得滴水不漏。舆情压下去了。\n\n三个月后，另一段视频出现了。这次是完整版。" },
+    { t:"把当事人保下来，对外从简", cost:2, eff:{network:12,risk:24,merit:-6},
+      msg:"你顶住了。那两个人只挨了内部处分。\n\n他们从此对你死心塌地。\n\n有些人是这么攒起来的。也有些人是这么栽进去的。" },
+  ]},
+
+{ id:"tanhua", w:9, cond:s=>s.rank>=2 && s.rank<=7 && s.yearsInRank>=2, tag:"人事",
+  title:"提拔前的谈话",
+  text:`组织部找你谈话。这种谈话通常意味着好事，但也不一定。\n\n谈到一半，对方忽然问：你和某某同志，关系怎么样？\n\n某某同志是你的直接上级，也是最近有点风声的那个人。`,
+  opts:[
+    { t:"说关系正常，工作上配合得很好", eff:{network:6,risk:6},
+      msg:"你说了几句四平八稳的话。\n\n对方点头，记了下来，没有再追问。\n\n你出门的时候后背有点凉——你不知道刚才那个问题，究竟是在问你，还是在问他。" },
+    { t:"如实说了一些你知道的情况", cost:1, eff:{network:-15,merit:7,risk:-9},
+      msg:"你说了三件事。都是真的，也都不算大。\n\n两个月后他调走了，去了一个没什么实权的位置。\n\n他走之前找你谈过一次，聊了半小时家常，只字未提工作。那半小时你坐得笔直。" },
+    { t:"说自己了解不多", eff:{network:-4},
+      msg:"你说得很谨慎。\n\n对方合上本子，说：好，我们了解了。\n\n后来那次提拔没有你。你想不明白是哪句话的问题，可能哪句都不是，也可能就是这句。" },
+  ]},
+
+{ id:"dingzi", w:8, cond:s=>s.rank>=3 && s.rank<=6, tag:"管理",
+  title:"刺头",
+  text:`科里有个老同志，业务是全单位最强的，但从不给任何领导好脸色。\n\n他上一任领导拿他没办法，把他晾了三年。现在他归你管。`,
+  opts:[
+    { t:"用他，把最难的活给他", cost:2, eff:{merit:14,network:-6,health:-3},
+      msg:"你把那个卡了两年的技术难题丢给他，只说了一句：我知道你能干，别人干不了。\n\n他干成了。\n\n他还是不给你好脸色，但从那以后，你在会上说话时他会抬起头。" },
+    { t:"晾着，别惹麻烦", eff:{merit:-6,network:4},
+      msg:"你按上一任的办法办。省心。\n\n他退休那天没办欢送会，自己收拾了东西就走了。\n\n他走后半年，单位有个项目卡住了，没人能解。" },
+    { t:"想办法把他调走", cost:2, eff:{network:-9,merit:-4,risk:6},
+      msg:"你办成了。\n\n科室里安静多了，也平庸多了。\n\n后来有个年轻人私下问你：听说以前科里有个特别厉害的老师傅？你说，走了。" },
+  ]},
+
+{ id:"jiuren", w:8, cond:s=>s.rank>=3, tag:"人情",
+  title:"老同事",
+  text:`当年一起进单位的老陈来找你，坐了很久才说事：他儿子摊上了点麻烦，不大，但需要有人说句话。\n\n他说的时候一直看着自己的鞋。你从没见过他这样。`,
+  opts:[
+    { t:"帮，找人过问一下", cost:2, eff:{network:6,risk:20,family:4},
+      msg:"事情摆平了。老陈要给你磕头，你拦住了。\n\n后来你们再见面，他客气得像见领导。\n\n你有点想念以前那个会当着你面骂领导的老陈。" },
+    { t:"告诉他能做什么、不能做什么", eff:{network:-6,risk:-4,merit:3},
+      msg:"你给他讲了两个小时的程序、时限、和该找谁。你没有打一个电话。\n\n他走的时候说了句谢谢。\n\n那声谢谢是真心的，但你们从此再没约过饭。" },
+  ]},
+
+{ id:"shuzhi", w:7, cond:s=>s.rank>=3 && s.rank<=7, tag:"工作",
+  title:"数字",
+  text:`年度统计报上来，有一项指标比去年低。低得不多，但足够让排名掉两位。\n\n统计员小声说：口径可以调一调。`,
+  opts:[
+    { t:"调", eff:{merit:9,risk:16},
+      msg:"排名保住了，还进了一位。\n\n那个真实的数字在你办公室的柜子里锁着。你偶尔会拿出来看一眼，然后放回去。" },
+    { t:"照实报", eff:{merit:-7,risk:-8,network:-6},
+      msg:"排名掉了四位。市里通报点了名。\n\n第二年那项指标真的涨上来了，因为大家开始正视它了。\n\n没有人把这两件事联系起来。" },
+  ]},
+
+/* ================= 补充事件 · 高层 ================= */
+{ id:"boss_diff", w:11, cond:s=>s.rank>=5, tag:"决策",
+  title:"不同意见",
+  text:`班子会上，一把手的方案你不同意。你的理由很硬，数据都在手上。\n\n会议室里十一个人，都在等你开口或者不开口。`,
+  opts:[
+    { t:"当场把话说完", cost:2, eff:{merit:12,network:-16,risk:-4},
+      msg:"你讲了六分钟。会议室很安静。\n\n方案最后还是通过了，但改了两条，是你提的那两条。\n\n散会后一把手叫住你，说：以后这种话，会前跟我说。\n\n这句话有两种听法，你两种都听了。" },
+    { t:"会上不说，会后单独找他", cost:2, eff:{network:9,merit:4},
+      msg:"你在他办公室待了四十分钟。他听完，说再想想。\n\n三天后方案调整了，署的是他的名字。\n\n这就是这个系统里最体面的一种成功。" },
+    { t:"举手同意", eff:{network:6,merit:-9,risk:8},
+      msg:"全票通过。\n\n两年后那个项目出了问题，追责的时候翻会议记录，你的名字在同意栏里。\n\n没有人记得你当时想说什么。" },
+  ]},
+
+{ id:"touzi", w:10, cond:s=>s.rank>=5, tag:"风险",
+  title:"投资商",
+  text:`一个大项目要落地，投资额是你们全年财政收入的三分之一。\n\n对方老板很热情，条件好得不像话。你让人查了他的底，查出来的东西让你睡不着。`,
+  opts:[
+    { t:"签，先把 GDP 做上去", eff:{merit:22,risk:32},
+      msg:"项目落地那天，锣鼓喧天。你的名字上了省报。\n\n三年后他跑了，留下一片烂尾和四百多个讨薪的工人。\n\n那年冬天特别冷。" },
+    { t:"不签，把他劝走", cost:3, eff:{merit:-11,network:-9,risk:-11},
+      msg:"你顶住了很大压力。有人说你保守，有人说你不懂经济。\n\n那个项目后来落在了邻市。\n\n两年后邻市的书记因为这个项目被免了。你在新闻里看到消息，坐了很久，谁也没说。" },
+    { t:"签，但把条件全锁死在合同里", cost:5, eff:{merit:14,health:-7,risk:9},
+      msg:"你带着法制办的人跟他磨了两个月，加了十七条约束性条款，还压了一笔保证金。\n\n他后来还是跑了，但这次跑不掉——保证金够付工人工资。\n\n没有人给你记功。这种事记不了功，因为它防住的东西从来没发生过。" },
+  ]},
+
+{ id:"anpai", w:10, cond:s=>s.rank>=6, tag:"人事",
+  title:"打招呼的人",
+  text:`一个位置空出来了。这几天，你的手机响得比平时勤。\n\n有三个人跟你打过招呼，其中一个是你惹不起的。`,
+  opts:[
+    { t:"按惹不起的那个来", eff:{network:14,risk:20,merit:-7},
+      msg:"人安排上去了。能力一般，但没出大错。\n\n你欠的那个人情，从此变成了别人欠你的。人情就是这么流转的。\n\n这个位置后来做了很多年，一直没出什么成绩。" },
+    { t:"按最合适的人选来，然后去解释", cost:3, eff:{merit:12,network:-16},
+      msg:"你一个一个打电话解释。有两个说理解，一个直接挂了。\n\n上任的那个人后来干得很好，好到没人再提这件事。\n\n除了挂电话那个。他记了很久。" },
+    { t:"搁着，让位置空一年", eff:{network:-6,merit:-4},
+      msg:"你谁也不得罪，代价是这个位置空转了一年。\n\n下面的人做事没了主心骨，两个项目拖黄了。\n\n不做选择也是一种选择，而且往往是最贵的那种。" },
+  ]},
+
+{ id:"shicha", w:9, cond:s=>s.rank>=5, tag:"工作",
+  title:"视察路线",
+  text:`上面要来人。办公室报上来一条视察路线，避开了三个地方。\n\n那三个地方，恰恰是最需要被看见的。`,
+  opts:[
+    { t:"照报的路线走", eff:{merit:7,network:5,risk:6},
+      msg:"视察很顺利，评价很高。\n\n那三个地方后来也解决了，晚了四年。\n\n四年里，那里的人一直在等。" },
+    { t:"改路线，带他们去看最差的", cost:3, eff:{merit:15,network:-11,risk:-6},
+      msg:"办公室主任的脸都白了。\n\n领导在那三个地方一共待了两个小时，回去以后专项资金批下来了。\n\n你的直接上级从此对你有了看法，具体是什么看法，你到退休都没搞清楚。" },
+  ]},
+
+{ id:"chaiqian", w:9, cond:s=>s.rank>=4 && s.rank<=7, tag:"危机",
+  title:"最后一户",
+  text:`旧城改造还剩最后一户不签。八十六户已经搬了，工期压着，上面盯着。\n\n那家的老太太九十一岁，在那个院子里住了七十年。`,
+  opts:[
+    { t:"亲自去谈，谈到她愿意为止", cost:5, eff:{merit:12,health:-9,network:-6},
+      msg:"你去了十一次。前八次她连门都不开。\n\n第十一次她开了门，你陪她坐了一下午，听她讲这个院子里发生过的事。\n\n最后她签了，条件是把院里那棵石榴树移到新小区去。\n\n那棵树后来活了。" },
+    { t:"按程序申请强制执行", eff:{merit:9,risk:26,health:-4},
+      msg:"执行那天你没去现场。\n\n照片你后来还是看到了。\n\n工期保住了，指标完成了，你在总结会上讲了话。你讲的时候，眼睛没看台下。" },
+    { t:"停工，等", eff:{merit:-13,network:-11,risk:-9},
+      msg:"工期停了十四个月，直到老太太自己去世，家属签了字。\n\n你因为这个项目被约谈过两次。\n\n很多年后你还记得那个院子的样子。你没有后悔过，但你也没跟人说过这件事。" },
+  ]},
+
+{ id:"huanrenqing", w:8, cond:s=>s.rank>=6, tag:"人情",
+  title:"还情",
+  text:`当年提拔过你的那位老领导退了很多年了。他儿子的公司现在想进一个门槛很高的行业，需要一张许可证。\n\n老人家自己没开口，是别人来带的话。`,
+  opts:[
+    { t:"办，欠了一辈子的", eff:{network:9,risk:31,family:3},
+      msg:"证批下来了。程序上挑不出毛病，只是快了一点。\n\n你去看过老人家一次，他拉着你的手说了很多当年的事，一句没提这件事。\n\n你们都很清楚。清楚到不能说。" },
+    { t:"不办，但去看看老人家", cost:2, eff:{network:-11,risk:-6,family:4},
+      msg:"你提了两盒茶叶去，坐了两个小时，聊的全是二十年前的事。\n\n临走时他说：现在这个时候，是该谨慎些。\n\n你不知道他是真这么想，还是在给你台阶。你宁愿相信是前者。" },
+  ]},
+
+{ id:"erxian", w:9, cond:s=>s.rank>=5 && s.age>=54, once:true, tag:"人事",
+  title:"退二线",
+  text:`组织上找你谈，语气很温和：考虑到年龄结构，安排你到人大或政协去，级别不动。\n\n级别不动，权力归零。这句话没人会说出口，但所有人都懂。`,
+  opts:[
+    { t:"接受，站好最后一班岗", eff:{merit:-13,health:11,family:14,risk:-12},
+      msg:"你交接得干干净净，连办公室的绿植都留下了。\n\n新岗位很清闲，你有时候一整天没有一个电话。\n\n第一年你很不习惯，第二年你开始觉得，这样也挺好。" },
+    { t:"争取一下，再干两年", cost:4, eff:{network:-9,health:-7,merit:5},
+      fn:s=>{ if(chance(.45)){ s.pendMsg="你找了两个人，说了很多话。\\n\\n最后争取到了两年。\\n\\n这两年你干得很拼，因为你知道所有人都在看你值不值这两年。"; }
+              else { s.merit=cl(s.merit-15); s.network=cl(s.network-11);
+                     s.pendMsg="你找了两个人，说了很多话。\\n\\n没争取到，而且现在所有人都知道你争取过了。\\n\\n交接那天，来送你的人比原本会来的少了一半。"; } } },
+  ]},
+
+/* ================= 补充事件 · 高风险高回报 ================= */
+{ id:"gangu", w:8, cond:s=>s.rank>=4 && s.risk>=20, tag:"风险",
+  title:"干股",
+  text:`一个做工程的朋友说，公司要给你留一点份额。不用出钱，不用签字，不用出面。\n\n他说这话的时候在笑，好像在讲一件很平常的事。\n\n在他那个世界里，这确实很平常。`,
+  opts:[
+    { t:"要了", eff:{money:120,risk:52},
+      fn:s=>{s.flags.shares=true},
+      msg:"第一年分红打过来的时候，你在手机银行前面坐了很久。\n\n那个数字比你二十年工资加起来还多。\n\n从那天起，你多了一件永远做不完的事：想那一天会怎么来。" },
+    { t:"不要，也别再来往了", eff:{risk:-14,network:-11},
+      msg:"你把话说得很硬，硬到有点不留情面。\n\n他愣了一下，笑着说：行，是我唐突了。\n\n他后来出事了。名单很长，没有你。" },
+  ]},
+
+{ id:"huikou", w:8, cond:s=>s.rank>=5, tag:"风险",
+  title:"结算",
+  text:`一个已经竣工验收的工程，施工方送来了「结算尾款的一点心意」。\n\n数目大到不能用信封装，只能用箱子。`,
+  opts:[
+    { t:"收下", eff:{money:88,risk:46},
+      msg:"箱子在你后备箱里放了三天，你才敢拿回家。\n\n那三天你把车停在了地下车库最里面的位置。\n\n后来你换了辆车，但每次停车，还是习惯往最里面开。" },
+    { t:"退回去，就当没发生", eff:{risk:-11,network:-7},
+      msg:"你让秘书原封退了回去。\n\n对方后来托人打听：领导是不是嫌少？\n\n这个问题让你笑了一下。他们的世界里没有第三个选项。" },
+    { t:"收下，然后原封上交", eff:{risk:-24,merit:11,network:-20},
+      msg:"你上交的时候，纪委的同志把箱子打开又合上，问了一句：您确定要走这个程序？\n\n你说确定。\n\n这件事在系统内传开了。有人敬重你，更多的人开始躲着你。" },
+  ]},
+
+{ id:"chuanwen", w:7, cond:s=>s.rank>=4 && s.risk>=25, tag:"风险",
+  title:"传闻",
+  text:`一封举报信里，除了经济问题，还提到了「生活作风」。\n\n那部分内容是编的，但编得很像真的。\n\n最难受的是，你没办法证明一件没发生过的事没发生过。`,
+  opts:[
+    { t:"配合调查，把该说的都说清楚", cost:3, eff:{risk:-16,health:-9,family:-11},
+      msg:"调查了四个月，结论是不实。\n\n结论出来的时候，单位里已经没人不知道这件事了。\n\n你回家那天，家里问了一句，你解释了。对方说：我信你。\n\n那三个字你记了很久，因为对方说得有点太快了。" },
+    { t:"托关系压下来", cost:2, eff:{risk:9,network:-11,money:-8},
+      msg:"信压下去了，没有立案。\n\n但压下去的东西不会消失，它只是换了个地方待着。\n\n后来每次有风吹草动，你都会想起这封信。" },
+  ]},
+
+/* ---------- 外逃三段式 ---------- */
+{ id:"offshore", w:15, cond:s=>s.money>=170 && s.risk>=24 && s.rank>=4 && !s.flags.assetsOut, once:true, tag:"风险",
+  title:"渠道",
+  text:`有人递给你一张纸，上面是个境外账户的开户流程。他说得很轻描淡写：\n\n「现在还来得及，晚两年通道就窄了。」\n\n你没接那张纸，但你把上面的字全记住了。`,
+  opts:[
+    { t:"办了，钱先出去", eff:{risk:30,money:-22,family:-9},
+      fn:s=>{s.flags.assetsOut=true},
+      msg:"手续比你想的简单，也比你想的贵。\n\n办完那天你在办公室坐到很晚。你忽然意识到，从今天起，你和其他人不一样了。\n\n他们只是有可能出事。你是已经准备好出事了。\n\n【你在境外有了一条后路】" },
+    { t:"不办。到这一步就够了", eff:{risk:-9,health:3},
+      msg:"你把那张纸的内容从脑子里删掉，删了三年才删干净。\n\n那个人后来没再找过你。\n\n你有时候会想，如果当初办了会怎么样。这个念头每次只停留两秒钟。" },
+  ]},
+
+{ id:"escape", w:0, force:true, cond:s=>s.flags.assetsOut && s.risk>=40 && !s.flags.escapeAsked, tag:"风险",
+  title:"窗口",
+  text:`那个人又来了，这次只说了三句话：\n\n「上面在查你们单位。」\n「后天有个考察团出境，名单还能加人。」\n「过了这次，就没有下次了。」\n\n你桌上还摊着明天的会议材料。旁边压着一张照片，很多年前照的。`,
+  opts:[
+    { t:"走", eff:{},
+      fn:s=>{ s.flags.escapeAsked=true; s.escaped=true; s.flags.married=false;
+              s.log.push([s.year, "以考察名义出境，未归"]); } },
+    { t:"不走。跑了就真的完了", eff:{risk:-9,health:-11,family:6},
+      fn:s=>{ s.flags.escapeAsked=true; },
+      msg:"你把材料合上，回家吃了顿饭。\n\n那天晚上你睡得很沉，是很多年来最沉的一觉。\n\n你不知道明天会发生什么，但你知道自己不会在别的地方醒来。" },
+    { t:"不走，而且主动去说清楚", cost:4, eff:{risk:-44,merit:-16,network:-22,money:-40},
+      fn:s=>{ s.flags.escapeAsked=true; s.flags.confessed=true; },
+      msg:"你自己走进了那栋楼。\n\n谈了很多天，退了很多东西，受了处分，降了级。\n\n从那栋楼里出来的那个下午下着小雨，你没打伞。\n\n那是十几年来你睡得最好的一晚。" },
+  ]},
+
+/* ================= 补充事件 · 家庭生活 ================= */
+{ id:"father_die", w:8, cond:s=>s.age>=45 && s.age<=62 && !s.flags.fatherGone, once:true, tag:"家庭",
+  title:"电话",
+  text:`凌晨四点，老家打来电话。\n\n你在黑暗里坐了几秒钟才接。你已经料到了，但料到和听到是两回事。`,
+  opts:[
+    { t:"连夜赶回去，待到头七", cost:4, eff:{family:19,merit:-9,health:-6},
+      fn:s=>{s.flags.fatherGone=true},
+      msg:"你在老家待了七天。\n\n整理遗物的时候，你从抽屉最底下翻出一沓剪报——你这些年上过的每一次报纸，他都剪下来了，按时间排好。\n\n最早的一张是二十四年前，你在县里得的一个不值一提的先进。\n\n他从来没跟你提过这件事。" },
+    { t:"赶回去，处理完就回来", cost:2, eff:{family:6,merit:2,health:-4},
+      fn:s=>{s.flags.fatherGone=true},
+      msg:"你待了三天，把事情办完就回单位了。手头确实有走不开的工作。\n\n后来你母亲跟你说：你爸走之前那几天，一直问你什么时候到。\n\n你没接话。" },
+  ]},
+
+{ id:"gaokao", w:12, pri:4, cond:s=>kidAge(s)>=17 && kidAge(s)<=19, once:true, tag:"家庭",
+  title:"志愿",
+  text:`{子女}高考完了，分数不错。填志愿的时候，{TA子}说想学的专业，跟你规划的完全不是一回事。\n\n你为{TA子}规划的那条路，你走过，你知道它通向哪里。`,
+  opts:[
+    { t:"按你的意思来，将来{TA子}会懂", eff:{family:-16,merit:3},
+      msg:"{TA子}最后填了你选的学校和专业。\n\n毕业后进了体制，走得很稳。\n\n有一年春节喝多了，{TA子}说了一句：爸，我这辈子没做过一个自己的决定。\n\n然后就睡着了，第二天什么都不记得。你记了一辈子。" },
+    { t:"让{TA子}自己选", eff:{family:17,money:-6},
+      msg:"{TA子}选了一个你完全不了解的专业，去了很远的城市。\n\n那几年过得挺辛苦，你偷偷打过几次钱。\n\n后来{TA子}做得还行。不算大富大贵，但每次打电话过来，语气都是轻快的。\n\n轻快这个东西，你自己已经很多年没有过了。" },
+  ]},
+
+{ id:"lend", w:7, cond:s=>s.money>=60 && s.age>=38, tag:"生活",
+  title:"借钱",
+  text:`大学同学开口借二十万，说周转一下，三个月就还。\n\n你们已经七八年没联系了。他能开这个口，说明是真的到了没办法的时候。`,
+  opts:[
+    { t:"借", eff:{money:-14,family:-4,network:4},
+      fn:s=>{ if(chance(.4)){ s.money+=21; s.pendMsg="三个月后他真的还了，还多给了利息。\\n\\n你把多的退了回去。\\n\\n后来他生意做起来了，逢年过节都记得你。"; }
+              else { s.pendMsg="三个月过去了，半年过去了，两年过去了。\\n\\n他没有跑，只是还不上。每次通电话都很客气，客气到你不好意思再问。\\n\\n那二十万你后来在心里划掉了。"; } } },
+    { t:"婉拒", eff:{network:-6,money:1},
+      msg:"你说手头也紧，孩子上学花销大。\n\n他说理解理解，挂了。\n\n这个电话是你们最后一次通话。" },
+  ]},
+
+{ id:"spouse_ill", w:7, cond:s=>s.flags.married && s.age>=50, once:true, tag:"家庭",
+  title:"体检报告",
+  text:`妻子的体检报告出来了，有一项指标不对，需要住院进一步检查。\n\n她说没事，你先忙你的。\n\n她这句话说了二十多年，你每一次都信了。`,
+  opts:[
+    { t:"这次不忙。请假陪着", cost:4, eff:{family:22,merit:-11,health:-3},
+      msg:"你陪了十九天。\n\n结果是良性的。出院那天她说：其实我一个人也能行。\n\n你说我知道。\n\n然后你们谁也没再说话，走了很长一段路。" },
+    { t:"安排了最好的医生，人没去", eff:{money:-9,family:-15,merit:5},
+      msg:"你打了七个电话，找到了最好的专家，安排了最好的病房。\n\n所有能用钱和关系解决的，你都解决了。\n\n她出院是自己打车回的家。" },
+  ]},
+
+/* ================= 补充事件 · 加时赛 ================= */
+{ id:"ot_meet", w:11, cond:s=>s.overtime, tag:"晚局",
+  title:"会见",
+  text:`日程排得满满的。今天要见五拨人，每拨二十分钟。\n\n第三拨里有个人，是你三十年前在青阳县的同事。他现在是个地级市的一把手，进门时叫了你一声职务，很标准。`,
+  opts:[
+    { t:"按流程谈完，公事公办", eff:{merit:6,network:-4},
+      msg:"二十分钟，谈的都是工作，一句私话没有。\n\n他走的时候还是那句标准的称呼。\n\n门关上以后，你在座位上坐了一会儿，才叫下一拨进来。" },
+    { t:"让秘书把后面往后推半小时", cost:2, eff:{family:9,network:8,merit:-4},
+      msg:"你们聊了五十分钟，全是三十年前的事：老周、搪瓷缸、那年冬天的暖气。\n\n他临走时说：您还记得这些啊。\n\n你说，我就剩这些了。" },
+  ]},
+
+{ id:"ot_back", w:9, cond:s=>s.overtime, once:true, tag:"晚局",
+  title:"回去看看",
+  text:`青阳县要办一个纪念活动，请你回去。\n\n你已经四十多年没回去过了。`,
+  opts:[
+    { t:"回去", cost:3, eff:{family:14,health:-4,merit:4},
+      msg:"当年的办公楼拆了，原址是个广场。\n\n有人给你介绍这几年的发展，你一直点头。走到广场东南角的时候你停了一下——那个位置，大概就是你那张桌子。\n\n没有人知道你为什么停下来。你自己也没解释。" },
+    { t:"让办公室回个函，感谢邀请", eff:{merit:2},
+      msg:"函写得很得体。\n\n你后来一直没回去过。\n\n有些地方，去了就得承认时间过去了。" },
+  ]},
+
+/* ================= 补充事件 · 浪潮专属 ================= */
+{ id:"w_merge2", w:14, waveTag:"merge", tag:"变局",
+  title:"公章",
+  text:`撤县并区，最后一天。\n\n你负责监交公章。那枚章用了四十七年，边缘磨得发亮。\n\n交接完，它就要被封存销毁了。`,
+  opts:[
+    { t:"按程序封存，签字", eff:{merit:6,network:3},
+      msg:"你签了字，看着它被装进袋子。\n\n第二天新章启用，一切照常运转。没有人提起旧的那枚。\n\n只有你偶尔会想起它压在纸上的手感。" },
+    { t:"申请留一份拓印，进档案馆", cost:2, eff:{merit:9,family:4},
+      msg:"你打了报告，批下来了。那份拓印现在在县档案馆的玻璃柜里。\n\n很多年后有个写地方志的年轻人找到你，问起这件事。\n\n他说：多亏您当年留了一手。" },
+  ]},
+
+{ id:"w_aging2", w:13, waveTag:"aging", cond:s=>s.rank>=3, tag:"变局",
+  title:"床位",
+  text:`全区的养老床位缺口是三千七百张。你手里的钱，够建四百张。\n\n方案有两种：建一个漂亮的示范中心，或者在十几个街道各铺一点，都不好看。`,
+  opts:[
+    { t:"建示范中心，能上电视", eff:{merit:14,risk:9},
+      msg:"中心建得很漂亮，成了全省的参观点。\n\n入住率一直不高——因为它建在了新区，老人们的子女都在老城。\n\n参观的人比住的人多。" },
+    { t:"铺到街道去，难看但管用", cost:4, eff:{merit:8,health:-5,network:-6},
+      msg:"十七个点，全部塞在老旧小区的边角料空间里，照片拍出来毫无观赏性。\n\n没有一家媒体来报道。\n\n三年后入住率百分之九十四。" },
+  ]},
+
+
+/* ================= 补充事件 · 早期加厚 ================= */
+{ id:"sushe", w:11, cond:s=>s.rank<=1 && s.age<=28, once:true, tag:"生活",
+  title:"宿舍",
+  text:`单位有间空宿舍，在办公楼后面那栋老楼三层，走到办公室两分钟。\n\n房租象征性收八十块。\n\n李主任说：住这儿方便，随叫随到。\n\n「随叫随到」这四个字，他说得很自然。`,
+  opts:[
+    { t:"住进去", eff:{money:2.4,merit:7,health:-4,family:-7},
+      fn:s=>{s.flags.dorm=true},
+      msg:"你搬了进去。省下的房租很实在。\n\n第一个月被叫下楼加班四次，第二个月七次。到第三个月你已经养成了穿着衬衫睡觉的习惯，因为省事。\n\n你后来住了整整六年。搬走那天你才发现，那六年里你没有一天真正下过班。" },
+    { t:"在外面租，远一点也行", eff:{money:-2.6,family:6,health:3},
+      msg:"你租在城东，通勤四十分钟。\n\n有几次夜里来电话叫人，第一个到的从来不是你。\n\n主任没说过什么。但有些名单，你也从来没在上面出现过。" },
+  ]},
+
+{ id:"jilu", w:11, cond:s=>s.rank<=1 && s.age<=30, once:true, tag:"工作",
+  title:"会议记录",
+  text:`第一次列席局务会做记录。你记得很认真，回来整理成了会议纪要。\n\n交上去之前你发现一个问题：局长中途说了一句话，语气不太好，内容也跟最后的决议不一致。\n\n那句话，记还是不记。`,
+  opts:[
+    { t:"照实记上", eff:{merit:4,network:-11},
+      msg:"纪要发下去，办公室主任把你叫过去，什么也没说，只是把那一段用红笔划掉了，让你重印。\n\n他说：小李，纪要不是速记。\n\n你回去把那句话删了。你也把这句教诲记住了，记了一辈子。" },
+    { t:"删掉，只留决议", eff:{network:9,merit:2},
+      msg:"纪要一次通过。主任说这个稿子干净。\n\n你后来做过上百次记录，再没犹豫过。\n\n有时候你会想起自己第一次拿红笔划掉别人一句话的那个下午，但也就是想起而已。" },
+    { t:"去问主任该怎么处理", cost:1, eff:{network:7,merit:3},
+      msg:"主任愣了一下，然后笑了：你这个小伙子，有点意思。\n\n他教了你怎么处理，还多说了两句别的。那两句别的，比纪要值钱多了。\n\n他从此把你当自己人。" },
+  ]},
+
+{ id:"paotui", w:10, cond:s=>s.rank<=1 && s.age<=29, tag:"办公室",
+  title:"这些也是工作吗",
+  text:`这个月你做的事：取快递十一次，修打印机四次，订盒饭二十二次，搬矿泉水六趟，替三个人代打过卡。\n\n还有半份材料，是你唯一算得上业务的活。\n\n你是全省第七名考进来的。`,
+  opts:[
+    { t:"忍着，什么都干", eff:{network:9,merit:-3,health:-3},
+      msg:"你什么都干，而且干得比别人细。订盒饭你会记住谁不吃香菜。\n\n三年后有个新人来了，这些活交给了他。\n\n交接那天你跟他说：这些事没意义，但记住谁不吃香菜是有意义的。他没听懂。" },
+    { t:"找主任聊一次，想干点正经业务", cost:1, eff:{merit:8,network:-7},
+      msg:"主任听完，沉默了几秒，说：行，那个报表你来做。\n\n那是全单位最难最琐碎的一张报表，之前没人愿意碰。\n\n你做了两年，做成了全市的样板。这是你第一件真正属于自己的东西。" },
+    { t:"消极对付，能拖就拖", eff:{network:-11,health:4},
+      msg:"你开始迟到，开始装作没看见群里的消息。\n\n没有人批评你，只是渐渐地，什么事都不找你了。\n\n清静了。清静得让你心里发慌。" },
+  ]},
+
+{ id:"kaohe", w:10, cond:s=>s.rank<=2 && s.age<=33, tag:"办公室",
+  title:"自评表",
+  text:`年度考核自评表发下来了。「个人工作总结」那一栏，有半页空白。\n\n隔壁桌的老同志写了八行，其中六行是抄的文件。他写完把表推给你：参考参考。`,
+  opts:[
+    { t:"照他的抄", eff:{network:5,merit:-3},
+      msg:"你抄了，改了几个字。\n\n表交上去，评了个「称职」。全单位百分之九十都是「称职」。\n\n这张表你后来填了三十几年，内容基本没变过。" },
+    { t:"认真写自己真干过的事", cost:1, eff:{merit:9,network:-5},
+      msg:"你写了满满一页，具体到每个项目的数字。\n\n办公室主任看的时候皱了下眉，说：写这么细干嘛，又没人看。\n\n三年后一次干部考察，考察组真的把历年自评表调出来看了。他们看到了那一页。" },
+    { t:"写得很谦虚，把功劳都给了集体", eff:{network:11,merit:-4},
+      msg:"通篇「在领导的关心下」「在同志们的帮助下」，自己的部分只有两行。\n\n领导很满意。这种满意很廉价，但它是真的。" },
+  ]},
+
+{ id:"xiaochen", w:9, cond:s=>s.rank<=2 && s.age>=25 && s.age<=34, once:true, tag:"抉择",
+  title:"小陈走了",
+  text:`同一批进来的小陈辞职了。他考研上岸，去了南方。\n\n走之前他请你吃了顿饭，喝到一半问你：\n\n「你有没有算过，你这辈子最好的结果是什么？」`,
+  opts:[
+    { t:"说算过，能到正处就知足了", eff:{merit:5,health:-2},
+      msg:"你说了个很具体的数字，具体到年份和职级。\n\n他笑了一下，说：那挺好的，至少你算得出来。\n\n你送他上车。回去的路上你意识到，你确实算过，而且算过不止一次。" },
+    { t:"说没算过，走一步看一步", eff:{family:5,health:3},
+      msg:"他说：我就是算不出来才走的。\n\n很多年后你在新闻里见过他一次，公司做得不小。\n\n那天你正在改一份第二天要用的材料，看完就关了手机，继续改。" },
+    { t:"问他要不要一起走", cost:1, eff:{network:-4,merit:-3,family:4},
+      fn:s=>{s.flags.wavered=true},
+      msg:"你半开玩笑地说了这句话。他愣住了，认真地看了你几秒钟，说：你不会走的。\n\n他说得对。\n\n但你后来每次难受的时候，都会想起自己曾经问过这么一句。这句话是你留给自己的一个小口子 —— 证明你也曾经想过别的活法。" },
+  ]},
+
+
+/* ================= 早期事件 · 稀释批次 ================= */
+{ id:"shitang", w:12, cond:s=>s.rank<=2 && s.age<=34, tag:"办公室",
+  title:"食堂",
+  text:`中午打完饭，你端着盘子站在过道上。\n\n靠窗那桌是几个科长，中间那桌是各科室的老同志，靠门口那桌坐着几个和你差不多大的。\n\n三张桌子，三种人生。你得挑一张坐下。`,
+  opts:[
+    { t:"厚着脸皮往靠窗那桌凑", cost:1, eff:{network:9,merit:2},
+      msg:"你坐下的时候他们停了半秒，然后继续聊。\n\n你一句话没插上，但你听到了一件三个月后才正式公布的事。\n\n从那天起你每天十一点半准时下楼——去晚了，靠窗那桌就满了。" },
+    { t:"跟同龄人坐一起", eff:{family:5,health:3,network:-3},
+      msg:"这顿饭吃得最舒服。大家骂领导、聊房价、说谁又走了。\n\n后来这几个人里走了三个。剩下的两个，一个成了你的下属，一个成了你的对手。" },
+    { t:"打包回办公室，边吃边干活", eff:{merit:6,health:-3,network:-5},
+      msg:"你在办公桌上吃了六年盒饭。\n\n六年里你比谁都熟悉业务，也比谁都不知道单位在发生什么。" },
+  ]},
+
+{ id:"mobanche", w:12, cond:s=>s.rank<=2 && s.age<=33, tag:"生活",
+  title:"末班车",
+  text:`晚上十点四十，材料还差一段。末班公交十一点整。\n\n你算了一下：现在走，明天早来一小时补；现在不走，打车四十块，到家一点。`,
+  opts:[
+    { t:"赶末班车", eff:{money:.4,health:4,merit:-3},
+      msg:"你一路小跑，赶上了。\n\n车上没几个人。你靠着窗户，看见路灯一盏一盏往后退。\n\n那一年你还会为了四十块钱跑起来。后来你有车了，但再也没有在夜里跑过。" },
+    { t:"改完再打车", eff:{money:-.5,health:-4,merit:6},
+      msg:"你一点二十到家。稿子交上去，主任说这次可以。\n\n打车票你留着，本想找机会报销，一直没好意思提。那张票在钱包里放到褪色。" },
+    { t:"直接在办公室沙发上凑合一夜", eff:{merit:7,health:-7,network:4},
+      msg:"早上六点你被保洁阿姨的钥匙声吵醒。\n\n她说：小伙子又睡这儿啊。「又」这个字，说明她已经见过好几次了。\n\n主任那天上午看见你桌上叠着的毛毯，什么也没说。但他看见了。" },
+  ]},
+
+{ id:"laoxiang", w:11, cond:s=>s.rank<=2 && s.age<=32, once:true, tag:"人情",
+  title:"老乡",
+  text:`单位有个不成文的圈子：几个同一个地级市出来的，每月聚一次。\n\n有人来问你去不去。你老家确实是那儿的。`,
+  opts:[
+    { t:"去，多条线是多条路", cost:2, eff:{network:12,money:-.5,risk:6},
+      fn:s=>{s.flags.laoxiang=true},
+      msg:"一桌八个人，最高的是个副处。散场时他记住了你的名字和科室。\n\n这个圈子后来帮过你两次，也让你在一次谈话里被单独问起过。\n\n他们问的时候语气很随意，随意得让你后背发凉。" },
+    { t:"不去，不想被贴标签", eff:{network:-5,risk:-4,merit:3},
+      msg:"你婉拒了两次，第三次他们就没再问。\n\n你确实干净。你也确实，什么风声都比别人晚知道三天。" },
+  ]},
+
+{ id:"jiedai", w:12, cond:s=>s.rank<=2 && s.age<=34, tag:"应酬",
+  title:"陪同",
+  text:`上级来人，主任点名让你陪同。你的任务写在纸条上：倒水、递材料、拍照、最后敬一圈酒。\n\n纸条最后一行是：「话不用你说。」`,
+  opts:[
+    { t:"照纸条办，一个字不多说", eff:{network:8,health:-4},
+      msg:"全程无差错。倒水的时机、递材料的角度、敬酒的顺序，你都做对了。\n\n主任事后说：这个小伙子稳。\n\n「稳」是这个系统里对年轻人最高的评价，也是最低的期待。" },
+    { t:"找机会插了一句业务上的话", cost:1, eff:{merit:9,network:-6},
+      msg:"你说的那句话是对的，而且客人来了兴趣，追问了两句。\n\n那顿饭后来变成了业务讨论。主任全程微笑，回单位后叫你去办公室待了二十分钟。\n\n他没批评你。他只是说：下次这种话，让我来说。" },
+    { t:"敬酒时被灌了三杯", eff:{network:6,health:-9,merit:3},
+      msg:"你吐在了饭店的洗手间，然后回来继续倒水。\n\n第二天你请了半天假。这半天没扣工资，因为主任跟人事说你是「公务活动受伤」。\n\n这大概是你听过最荒诞也最温暖的一句话。" },
+  ]},
+
+{ id:"qunli", w:12, cond:s=>s.rank<=3 && s.age<=38, tag:"办公室",
+  title:"@所有人",
+  text:s=>{ const t=nth("qunli");
+    if(t<=1) return `晚上十一点二十，工作群弹出一条：@所有人 明天上午九点前报数据，收到请回复。\n\n已经有六个人回了「收到」。第七条消息是二十三点二十一分发的。\n\n现在是二十三点二十二分。`;
+    if(t===2) return `又是十一点二十。\n\n这次群里已经有十一个人回了「收到」。\n\n你的拇指停在屏幕上，忽然想不起自己上一次在十一点之前放下手机是哪一天。`;
+    return `十一点二十，@所有人。\n\n你直接回了「收到」。\n\n回完才往上翻，看看到底是什么事。`; },
+  opts:[
+    { t:"立刻回「收到」，然后爬起来做", cost:2, eff:{merit:6,health:-5,family:-4},
+      msg:"你是第八个回的。做到凌晨一点半。\n\n第二天九点交上去，主任说了句「行」。\n\n这个群后来又响过上千次。你每一次都是前十个回复的，这件事没有任何人夸过你，但它确实是一种资历。" },
+    { t:"回「收到」，明早六点起来做", eff:{merit:4,health:-2,family:2},
+      msg:"你定了五点半的闹钟，赶在八点半交了。\n\n没有区别。这件事你想明白得很早：他们要的是「收到」这两个字，和九点前那份表。中间那八个小时你怎么过的，没有人关心。" },
+    { t:"睡了，第二天早上才看见", eff:{merit:-6,network:-8,health:5},
+      msg:"你是最后一个回的，九点零七分。\n\n主任在群里没说什么，单独发了个「?」。\n\n那个问号你盯着看了很久，最后回了三个字：对不起。" },
+  ]},
+
+{ id:"piping", w:11, cond:s=>s.rank<=2 && s.age<=32, once:true, tag:"办公室",
+  title:"当众",
+  text:`科室例会上，主任因为一个数据错误当着所有人批评了你。\n\n那个数据不是你填的。填的人就坐在你旁边，一直低着头。`,
+  opts:[
+    { t:"当场认了", eff:{network:11,merit:-4},
+      msg:"你说是我的问题，我改。\n\n散会后旁边那个人跟着你走到楼梯口，说了句谢谢。\n\n三年后他调去了另一个单位。走之前他请你吃了顿饭，什么也没提，但你们都知道是为什么。" },
+    { t:"说明情况", eff:{merit:4,network:-11},
+      msg:"你说得很客气，只是把事实讲了一遍。\n\n主任「哦」了一声，说那下次都注意。会就这么开完了。\n\n你没做错任何事。但从那天起，办公室里有一个人再也没主动跟你说过话。" },
+    { t:"什么也没说，会后去找主任", cost:1, eff:{network:6,merit:4},
+      msg:"你在他办公室待了十分钟，把情况说清楚了，也说了自己没当场解释的原因。\n\n他看了你一眼，说：你比我想的成熟。\n\n那年年底，科室报优秀的名额，他给了你。" },
+  ]},
+
+/* ---------- 新人期补充（22–32 岁） ---------- */
+{ id:"qigao", w:11, cond:s=>s.rank<=1 && s.age<=27, once:true, tag:"工作",
+  title:"第七稿",
+  text:`一份三千字的汇报材料，你写到第七稿。\n\n第七稿和第一稿最大的区别是：第一稿里有六处你自己想出来的话，第七稿里一处也没有了。\n\n主任看完说：这稿可以。`,
+  opts:[
+    { t:"就这么交上去", eff:{merit:6,network:5,health:-3},
+      msg:"材料上会，一次通过。\n\n后来它被印在了年度汇编里，署的是单位的名字。\n\n你偶尔翻到那一页，能准确指出哪一句原来是什么样子。也只有你能。" },
+    { t:"把自己那几句加回去一句，赌一下", cost:1, eff:{merit:9,network:-6},
+      msg:"你加回去的那一句，是全篇唯一有人记住的一句。\n\n领导在会上念到它的时候停顿了半秒，说：这句写得有点意思。\n\n散会后主任把你叫过去，说：以后改稿别自作主张。语气不重，但他记住了。" },
+    { t:"问主任：前面六稿到底差在哪儿", cost:1, eff:{merit:4,network:8},
+      fn:s=>{ s.ability += 3; },
+      msg:"主任愣了一下，把七稿都摊开在桌上，一句一句给你讲了四十分钟。\n\n他讲的不是文字，是每一句话背后谁会看、看了会怎么想。\n\n这四十分钟顶你自己写四年。" },
+  ]},
+
+{ id:"mingzi", w:10, cond:s=>s.rank<=1 && s.age<=28, once:true, tag:"办公室",
+  title:"三百份",
+  text:`你起草的会议材料印了三百份，已经摆到了会议室每个座位上。\n\n散会前十分钟你才发现：封面上局长的名字，有一个字打错了。\n\n离开会还有四十分钟。`,
+  opts:[
+    { t:"一个人偷偷全部换掉", cost:2, eff:{health:-5,network:4,merit:3},
+      msg:"你一个人跑了两趟印刷室，抱着三百份材料在楼道里跑，衬衫全湿了。\n\n开会时没有一个人知道发生过什么。\n\n这件事你谁也没说。很多年后你带新人，看到他们慌成一团的样子，你才明白当年自己也没那么了不起——只是运气好。" },
+    { t:"报告主任，请他定", cost:1, eff:{network:7,merit:-3},
+      msg:"主任骂了你一句，然后叫了四个人一起换。\n\n十五分钟解决。\n\n他后来跟别人提起这事：那小子还行，知道捅出来比捂着强。这句话比那顿骂值钱多了。" },
+    { t:"赌没人看封面", eff:{merit:-9,network:-7,risk:3},
+      msg:"没人看封面。\n\n除了局长。他把材料翻过来看了两秒，什么也没说。\n\n那两秒里会议室很安静。你后来做过很多次汇报，每一次在念到自己名字之前，都会先把封面看一遍。" },
+  ]},
+
+{ id:"zuowei", w:10, cond:s=>s.rank<=1 && s.age<=29, once:true, tag:"办公室",
+  title:"位置",
+  text:`第一次跟着领导下县里。三个人，一辆车。\n\n司机开门等着，主任站在车边跟你说话，没有要上车的意思。\n\n副驾、后排右、后排左。你站在那儿，忽然发现这道题你没学过。`,
+  opts:[
+    { t:"坐副驾", eff:{network:8,merit:2},
+      fn:s=>{ s.ability += 2; },
+      msg:"你拉开副驾的门坐了进去。\n\n一路上你负责跟司机说话、看导航、下车先开后门。\n\n这是对的。没有人教过你，但你后来发现，这种事从来没有人教，只有做对和做错两种人。" },
+    { t:"坐后排，跟主任一起", eff:{network:-8},
+      msg:"你坐进了后排。\n\n主任没说什么，一路上跟你聊得挺好。\n\n回来第二天，办公室的老同志端着杯子路过你桌边，很随意地说了一句：下回坐前面。然后就走了。\n\n你脸红了一下午。" },
+    { t:"问一句：我坐哪儿合适", eff:{network:5,merit:-2},
+      msg:"你问出口的瞬间就后悔了。\n\n主任笑了，说：坐前面。\n\n没有人笑话你。但从那天起，你开始留意所有这类不写在纸上的东西——比材料多得多，也比材料要紧得多。" },
+  ]},
+
+{ id:"chuanzhen", w:10, cond:s=>s.rank<=1 && s.age<=29, once:true, tag:"工作",
+  title:"凌晨三点的传真",
+  text:`你在值夜班。凌晨三点零几分，传真机响了。\n\n是市里下来的一份通知，标着「特急」，要求六点前反馈。\n\n主任的手机你有。他昨天喝到很晚。`,
+  opts:[
+    { t:"打电话叫醒他", eff:{network:-4,merit:6},
+      msg:"响到第七声他接了，声音很哑。听完说了句「知道了」，挂了。\n\n二十分钟后他到了单位，头发是湿的。\n\n事情办成了。他没有谢你，但从那以后，凡是夜班，他都排你。这算是一种承认。" },
+    { t:"自己先把能办的办了，六点再叫他", cost:2, eff:{merit:9,health:-6,network:4},
+      fn:s=>{ s.ability += 3; },
+      msg:"你查文件、翻台账、打了四个电话吵醒了三个人，五点四十把稿子做完了。\n\n六点主任到，看了两分钟，签字。\n\n他在车上问你：这稿谁做的。你说我。他「嗯」了一声，没再说话。\n\n那一声「嗯」你记了很久。" },
+    { t:"压到早上再说", eff:{merit:-11,risk:4},
+      msg:"你把传真压在桌上，眯了两个小时。\n\n七点主任进门，看了一眼，脸色变了。\n\n最后事情没出大问题。但「特急」这两个字的分量，你是用这一次学会的。" },
+  ]},
+
+{ id:"xiaxiang", w:11, cond:s=>s.rank<=1 && s.age<=30, once:true, tag:"工作",
+  title:"第一次下乡",
+  text:`跟着下村。老支书把你让到堂屋，倒了一杯茶，茶叶是从一个铁盒里抓出来的。\n\n他问你多大，哪儿人，考了几年。\n\n然后他说：你们上面来的，我这辈子见过一百多个。`,
+  opts:[
+    { t:"认真听他讲完村里的事", cost:1, eff:{merit:7,network:4,health:-3},
+      fn:s=>{ s.ability += 3; },
+      msg:"他讲了两个多小时，从九八年那场水讲到去年的低保名额。\n\n你记了满满七页。回去以后你把那七页整理成了一份材料，没人要，你自己留着。\n\n三年后有个项目卡住了，你从抽屉里翻出那七页，一句话解决了问题。" },
+    { t:"客气两句，赶下一个点", eff:{merit:3,network:5},
+      msg:"你说了几句场面话，喝了半杯茶，走了。\n\n那天你们跑了六个村，材料上写「实地走访六个行政村」。\n\n这句话是真的。它只是没有告诉别人，六个村加起来你待了不到三个小时。" },
+    { t:"问他：那一百多个里，有几个后来还回来过", eff:{merit:5,network:7,family:-2},
+      msg:"老支书没马上回答，起身给你续了半杯水。\n\n他说：两个。一个是来查账的，一个是来看他妈的。\n\n这句话你后来讲给很多人听过。没有一个人接得上话。" },
+  ]},
+
+{ id:"qinqi", w:10, cond:s=>s.age<=30 && s.rank<=1, once:true, tag:"生活",
+  title:"你是干什么的",
+  text:`过年回家，一桌子亲戚。有人问：你现在到底是干什么的？\n\n你张嘴想解释，发现自己没法用一句话说清楚。\n\n你爸抢在你前面替你答了：在政府上班。\n\n满桌人「哦」了一声，气氛忽然好了起来。`,
+  opts:[
+    { t:"顺着往下说，讲点他们爱听的", eff:{family:8,network:3},
+      msg:"你讲了两个能听懂的段子。你爸一直在笑，还给你添了两次酒。\n\n那天晚上他喝多了，跟你妈说：这小子出息了。\n\n你没纠正他。你知道他说的「出息」，跟你自己心里的完全是两回事，但那天晚上没必要说。" },
+    { t:"认真解释你实际在干什么", eff:{family:-4,merit:2},
+      msg:"你讲了三分钟，从科室职能讲到手头那个报表。\n\n讲到一半你就发现所有人都在看手机。\n\n你爸打断你，说：吃菜吃菜。他不是不想听，他是替你难堪。" },
+    { t:"喝一口，说：干活的", eff:{family:4,health:-2},
+      fn:s=>{ s.flags.qinqiHumble = true; },
+      msg:"你说完这三个字，二舅笑了一声，说：谦虚。\n\n没有人再追问。\n\n后来的很多年，每一次有人问起你是干什么的，你的回答都比上一次更短。" },
+  ]},
+
+{ id:"baobao", w:9, cd:5, cond:s=>s.rank<=1 && s.age<=31, tag:"办公室",
+  title:"包",
+  text:s=>{
+    const t = nth("baobao");
+    if(t<=1) return `散会了，领导起身往外走。他的包还在桌上。\n\n没有人看你，但你能感觉到，办公室老刘的眼神在那个包和你之间来回了一次。`;
+    if(t===2) return `又是散会。这次你不用等老刘的眼神了，手已经先伸出去了。\n\n伸到一半你愣了一下——什么时候变成条件反射的，你自己也说不清。`;
+    return `你已经知道包该放在哪一侧、什么时候递、什么时候不递。\n\n今天散会，你身后那个新来的孩子站在原地没动。\n\n你看了他一眼。你完全知道自己这一眼是什么意思，这让你不太舒服。`;
+  },
+  opts:[
+    { t:"拿起来跟上去", eff:{network:6,merit:-2},
+      msg:"你拎着包走在他后面半步。\n\n他一路没回头，到电梯口才随口说了句：小张挺细心。\n\n这句话很轻。但在这个楼里，很多人一辈子也没听到过一句。" },
+    { t:"当没看见", eff:{network:-5,merit:2,health:2},
+      msg:"你收拾自己的本子走了。\n\n老刘绕过去把包拎上了。\n\n没有人说什么。只是从那以后，出门的场合渐渐都不叫你了——不是惩罚，是没必要。" },
+    { t:"提醒一句：领导，您包", eff:{network:2,merit:3},
+      msg:"他回头「哎」了一声，自己拿了。\n\n这没什么错。\n\n只是老刘后来跟你说了一句：有些活，不是替他干，是替你自己站个位置。你当时没听懂，很多年后才懂。" },
+  ]},
+
+{ id:"tuanjian", w:9, cd:6, cond:s=>s.rank<=2 && s.age<=32, tag:"生活",
+  title:"团建",
+  text:s=>{
+    const t = nth("tuanjian");
+    if(t<=1) return `单位年会，工会主席点名要新人出个节目。\n\n你会的东西里，没有一样适合在这种场合表演。\n\n距离年会还有四天。`;
+    if(t===2) return `又到年会。工会主席这次没点名，直接把节目单递给你：新人那块你统筹一下。\n\n你看了看名单，忽然理解了当年点你名的人。`;
+    return `年会节目单上，你的名字在最后一行：领导讲话。\n\n你写了三百字，念了两分半。台下有个孩子在偷偷看手机。\n\n你当年也是那个看手机的人。`;
+  },
+  opts:[
+    { t:"硬着头皮上，唱一首", cost:1, eff:{network:9,family:-2,health:-2},
+      msg:"你唱跑了两处调，中间忘了一句词，是台下有人替你接上的。\n\n效果出奇地好——不是因为唱得好，是因为大家喜欢看一个平时那么正经的人出丑。\n\n那之后单位里所有人都记住了你的名字。这比任何一份材料都快。" },
+    { t:"报个集体节目，把新人都拉上", cost:2, eff:{network:12,merit:3,health:-3},
+      msg:"你组织了七个人，排了个不知道该叫什么的东西，排了四个晚上。\n\n演出效果一般，但那七个人从此跟你熟了。\n\n十年后他们分散在六个部门。你需要打听什么事的时候，从来不缺电话。" },
+    { t:"推掉，说自己实在不会", eff:{network:-7,family:4,health:3},
+      msg:"你说了三遍「真的不会」，工会主席也就不勉强了。\n\n年会那晚你坐在最后一桌，吃得很饱，八点半就回家了。\n\n那年年底评先进，有一栏叫「集体活动参与度」。你才知道还有这么一栏。" },
+  ]},
+
+{ id:"tianliang", w:9, cd:7, cond:s=>s.rank<=1 && s.age<=32, tag:"工作",
+  title:"天亮",
+  text:s=>{
+    const t = nth("tianliang");
+    if(t<=1) return `连着第三个通宵。窗外从黑到灰再到白，你第一次看清楚办公楼对面那栋楼是什么颜色。\n\n八点整，主任来了，说：那个材料不用了，方案换了。`;
+    return `又一次通宵。你现在知道对面那栋楼是灰蓝色的。\n\n八点整，主任推门进来，看了一眼你桌上那摞纸，说了句：辛苦了。\n\n他没说用不用。你也没问。`;
+  },
+  opts:[
+    { t:"什么也没说，回去补觉", eff:{health:-8,merit:2},
+      msg:"你在椅子上睡了四十分钟，醒来接着上班。\n\n这份材料你留了备份，存在一个叫「废稿」的文件夹里。\n\n那个文件夹后来有一百多个文件。你一次也没打开过，但你一直没删。" },
+    { t:"问一句：为什么不早说", eff:{merit:4,network:-9,health:-6},
+      msg:"主任看了你一会儿，说：因为我也是今天早上才知道的。\n\n他说这话的时候没有生气，这让你更难受。\n\n你后来当了主任，也说过一模一样的话。" },
+    { t:"把废稿改一改，投了内刊", cost:1, eff:{merit:8,network:3,health:-4},
+      fn:s=>{ s.ability += 2; },
+      msg:"你花了两个晚上把它改成一篇署你名字的调研文章，发在省里的内刊上。\n\n三个月后有位副厅长在会上提了一句：那篇东西写得不错，谁写的？\n\n没有人答上来。但办公室主任记住了，他去查了。" },
+  ]},
+
+{ id:"tongpi", w:10, cd:6, cond:s=>s.rank<=1 && s.age<=31, tag:"生活",
+  title:"同批",
+  text:s=>{
+    const t = nth("tongpi");
+    if(t<=1) return `同一批上岸的十四个人，有个微信群。\n\n今天群里有人发了张照片：市委大院门口，配文「报到」。是借调走的那个。\n\n下面刷了一串恭喜。你也发了一个。`;
+    if(t===2) return `群里今天少了一个人——那个考回老家的，说要退群了，说没什么好聊的。\n\n剩下的十三个人里，有六个已经很久不说话了。\n\n你翻了翻聊天记录，最近三个月一共二十一条，其中十四条是转发链接。`;
+    return `群还在，名字没改过。\n\n上一次有人说话是去年，有人的父亲去世，大家发了一排蜡烛。\n\n你偶尔会点开看看谁的头像换了。也就是看看。`;
+  },
+  opts:[
+    { t:"也想办法动一动", cost:2, eff:{merit:5,network:6,health:-4,family:-3},
+      msg:"你开始留意所有能报名的东西：遴选、跟班学习、专班抽调。\n\n你报了四次，成了一次。\n\n那一次去的是市里一个临时专班，三个月，累得脱形。但从那以后，你的通讯录跟同批那十三个人不再是同一个量级。" },
+    { t:"发条消息，跟那个人聊聊", cost:1, eff:{network:8},
+      msg:"你说恭喜，他说别，来了才知道更累。\n\n你们聊了四十分钟，他跟你说了三件在群里绝对不会说的事。\n\n这四十分钟以后有用。很多年以后，你需要一个人在市委大院里帮你确认一件小事的时候，他还在。" },
+    { t:"退出群聊", eff:{family:5,health:3,network:-6},
+      msg:"你没有退，只是把它设成了免打扰。这两者的区别你自己心里清楚。\n\n从那以后你不再知道谁提了、谁走了、谁离婚了。\n\n日子安静了很多。你偶尔觉得这样挺好，偶尔不。" },
+  ]},
+
+{ id:"sishi", w:11, cond:s=>s.rank<=2 && s.age<=33, tag:"人情",
+  title:"私事",
+  text:`主任打电话来，说家里临时有事，问你能不能帮忙去学校接一下他儿子。\n\n现在是周三下午三点。你手上有个四点要交的东西。`,
+  opts:[
+    { t:"去接", eff:{network:11,merit:-5},
+      msg:"你接到了孩子，送回家，还买了个面包给他。\n\n四点那个东西晚交了一小时，没人追究。\n\n从那以后主任家里的事你成了常客。这算好事还是坏事，你用了很多年才想明白：它是好事，但它有代价，代价是你从此不再只是个同事。" },
+    { t:"说手上有活走不开", eff:{merit:4,network:-9},
+      msg:"你说得很实在。他说没事没事，我再想办法。\n\n四点那个东西你按时交了，交得很漂亮。\n\n后来有个培训名额，去的是另一个人。那个人业务不如你。" },
+    { t:"托同事去，自己继续干活", cost:1, eff:{network:3,merit:3},
+      msg:"你找了个刚好没事的同事帮忙，两头都交代了。\n\n事情办成了，你也没耽误活。\n\n主任知道后笑了一下，说：这个小伙子会办事。\n\n「会办事」这三个字，比「稳」高一级。" },
+  ]},
+
+{ id:"gaozi", w:12, cond:s=>s.rank<=2 && s.age<=34, once:true, tag:"工作",
+  title:"你写的话",
+  text:`全局大会。局长在台上讲话，念的是你写的稿子。\n\n一字未改。\n\n台下三百多人，没有一个人知道这些话是谁写的。`,
+  opts:[
+    { t:"就那么坐着听完", eff:{merit:8,health:2},
+      msg:"你听到自己写的那句「我们不能辜负这个时代」被念出来的时候，起了一身鸡皮疙瘩。\n\n散会后没有人提起这件事。\n\n但你知道，这个单位里有三百多个人，今天听了你说的话。这种感觉你后来又体会过很多次，每一次都没有第一次强烈。" },
+    { t:"会后忍不住跟同批的人说了", eff:{merit:4,network:-6},
+      msg:"你说得很含蓄，但意思很明白。\n\n对方「嗯」了一声，说：写稿子的活儿谁都干过。\n\n你后来再也没提过这种事。这个圈子里，功劳是不能自己说的——说了，那功劳就不算了。" },
+    { t:"回去把这份稿子存了一份", eff:{merit:5,ability:0},
+      fn:s=>{s.ability=cl2(s.ability+6)},
+      msg:"你建了个文件夹，叫「稿」。\n\n后来这个文件夹里存了四百多份东西，从科员时期的会议纪要，到很多年后你自己在台上念的稿子。\n\n有一次你翻到最早那一份，看着二十四岁的自己写的那些又空又热血的句子，看了很久。\n\n【能力提升】" },
+  ]},
+
+
+/* ================= 钱 ================= */
+{ id:"shenbao", w:11, cond:s=>s.rank>=3 && s.age>=35, tag:"风险",
+  title:"个人有关事项报告",
+  text:s=>{ const t=nth("shenbao");
+    if(t<=1) return `一年一度的个人有关事项报告表。\n\n本人及配偶子女的收入、房产、投资、经商情况，一栏一栏往下填。\n\n表格本身没什么，难的是你得决定，把哪一行写实。`;
+    if(t===2) return `又到这个时候。\n\n你打开去年那份存档，照着往下抄。\n\n抄到一半停住了——有一行去年是空的，今年不该再空着。`;
+    return `这张表你填了很多年，熟到不用看填表说明。\n\n熟到现在坐下来，脑子里冒出来的第一个念头不是「这行该怎么填」。\n\n是「哪一年填的那份最要命」。`; },
+  opts:[
+    { t:"全部如实填报", cost:1, eff:{},
+      fn:s=>{
+        const grey = greyMoney(s);
+        if(grey < 8){
+          s.risk = cl(s.risk - 7, 0, 140);
+          s.pendMsg = "半小时填完，每一栏都对得上。\n\n交表的时候你忽然意识到，这份表填得这么轻松，本身就是一件挺奢侈的事。";
+        } else {
+          s.risk = cl(s.risk + Math.min(24, 3 + grey/9), 0, 140);
+          s.pendMsg = "你把数字都写上去了。\n\n写完自己看了一遍，那个存款数字和你的工资年限摆在一起，怎么看怎么显眼。\n\n表交上去了。抽查是随机的，但你从此每年这个时候都会想起它。";
+        }
+      } },
+    { t:"该写的写，个别地方模糊处理", eff:{},
+      fn:s=>{
+        const grey = greyMoney(s);
+        s.risk = cl(s.risk + (grey<8 ? 6 : Math.min(30, 8 + grey/7)), 0, 140);
+        s.pendMsg = grey<8
+          ? "其实也没什么好瞒的，你只是习惯性地少写了一笔亲戚的房子。\n\n交上去以后你有点后悔——为了一件根本不重要的事，你在一张表上撒了谎。"
+          : "你把几笔说不太清的挪到了亲戚名下，表上就干净了。\n\n填表用了两个小时，比如实填多花了一个半小时。\n\n这一个半小时你后来还要花很多次。";
+      } },
+    { t:"填之前先把一部分转出去", cost:2, eff:{money:-9,risk:9},
+      msg:"你花了点手续费，把几笔挪了位置，表填得很顺。\n\n钱还是那些钱，只是换了个名字待着。\n\n你开始理解为什么有些人会走到最后那一步——他们也是从填一张表开始的。" },
+  ]},
+
+{ id:"parent_surgery", w:10, cond:s=>s.age>=42 && s.age<=62 && !s.flags.surgeryDone, once:true, tag:"家庭",
+  title:"三十八万",
+  text:`母亲要做一个手术。自费部分三十八万，进口耗材，医生说效果确实好很多。\n\n医保能报的那部分已经算进去了。剩下的是实打实的现金。`,
+  opts:[
+    { t:"砸锅卖铁也上最好的", eff:{money:-26,family:19,health:-4},
+      fn:s=>{s.flags.surgeryDone=true},
+      msg:"你把能取的都取了，还跟两个朋友开了口。\n\n手术很成功。母亲后来又活了很多年，每次见你都说那年多亏了你。\n\n那三十八万你还了四年。这四年你没买过一件超过五百块的衣服。" },
+    { t:"选常规方案，钱留着", eff:{money:-8,family:-13},
+      fn:s=>{s.flags.surgeryDone=true},
+      msg:"常规方案也做完了，恢复得慢一些，但没出问题。\n\n你没跟母亲说过还有另一个选择。\n\n这件事你一个人知道，也就一个人记着。" },
+    { t:"找人凑，能借的都借", cost:2, eff:{money:-17,family:15,network:-11,risk:6},
+      fn:s=>{s.flags.surgeryDone=true},
+      msg:"你一个下午打了十一个电话。有六个借了，三个说手头紧，两个没接。\n\n钱凑齐了，手术做了。\n\n那两个没接电话的人，后来你们还是照常来往，只是你再也没找过他们。" },
+  ]},
+
+{ id:"car", w:9, cond:s=>s.money>=95 && s.rank>=3, once:true, tag:"风险",
+  title:"车",
+  text:`旧车开了九年，该换了。\n\n你在两款之间犹豫了很久——不是因为差价，是因为其中一款停进大院，会有人多看两眼。`,
+  opts:[
+    { t:"买贵的那款，钱是自己的", eff:{money:-30,risk:19,family:6},
+      msg:"提车那天你特意停在了车位最里面。\n\n第二天还是有人问了：这车不错啊，多少钱？\n\n你说，朋友帮忙拿的，便宜。\n\n这句话你后来又说了很多遍，每次都说得越来越自然。" },
+    { t:"买便宜那款，够开就行", eff:{money:-13,risk:-4},
+      msg:"车很普通，停在院里毫不起眼。\n\n有一次一个办事的人从你车上下来，说了句：领导您这车……\n\n他后面半句没说完。你知道他想说什么，你挺高兴他没说完。" },
+    { t:"不换了，再开两年", eff:{money:1,health:-3,family:-5},
+      msg:"你又开了三年。中间大修过两次。\n\n有次下雨天车打不着火，你在路边等了四十分钟。那天你想了很多，主要想的是钱。" },
+  ]},
+
+{ id:"relative_borrow", w:9, cond:s=>s.money>=120, tag:"人情",
+  title:"都知道你有钱了",
+  text:`这半年，来借钱的亲戚有四个。\n\n他们不知道你具体有多少，但他们知道你「在那个位置上」。在他们的理解里，这两件事是一回事。`,
+  opts:[
+    { t:"能帮的都帮了", eff:{money:-18,family:8,network:3},
+      msg:"四家你帮了三家。剩下那家借的数目太大，你没敢答应。\n\n还回来的有一家。\n\n过年回老家，你成了那个「最有本事」的人。这个称呼像一件不合身的衣服，你穿了很多年。" },
+    { t:"只帮最亲的那一个", eff:{money:-9,family:-6},
+      msg:"你帮了小舅。剩下三家托人带过话，你都推了。\n\n第二年清明回去上坟，有两家没跟你打招呼。" },
+    { t:"一个都不借，把话说死", eff:{money:2,family:-15,risk:-4},
+      msg:"你在家族群里发了很长一段话，说了自己的难处和纪律要求。\n\n群里安静了很久，然后有人发了个「收到」。\n\n从那以后没人再找你借钱。也没人再找你了。" },
+  ]},
+
+{ id:"decorate", w:8, cond:s=>s.money>=160 && s.rank>=4, once:true, tag:"风险",
+  title:"装修",
+  text:`房子装修，预算超了不少。\n\n包工头是熟人介绍的，做完最后一天，他站在客厅里看了一圈，说了句：领导这房子，够气派。\n\n他说这话的时候是笑着的。`,
+  opts:[
+    { t:"按原计划做完，钱照付", eff:{money:-34,family:11,risk:11},
+      msg:"你一分没少给，发票收据都留着。\n\n但装修队来来往往几十号人，每个人都看见了这个房子长什么样。\n\n有些账不是钱的账。" },
+    { t:"砍掉一半，简装", eff:{money:-14,family:-6,risk:-5},
+      msg:"你把大理石换成了瓷砖，把定制柜换成了成品。\n\n住进去以后一切照常。来过的同事都说：挺朴素啊。\n\n「朴素」这个词从他们嘴里说出来，是好话。" },
+    { t:"让那位老板「看着办」", eff:{money:6,risk:31},
+      msg:"最后结账他只收了个材料钱。你推了两次，他说都是自己人。\n\n这套房子你住了很多年。每次有人来家里做客夸装修好，你都会含糊地把话岔开。" },
+  ]},
+
+{ id:"tuition", w:13, pri:4, cond:s=>kidAge(s)>=20 && kidAge(s)<=23, once:true, tag:"家庭",
+  title:"出国",
+  text:`{子女}想出去读书。两年下来大概八十万。\n\n{TA子}说要是拿不出来就算了，不勉强。说这话的时候没看你。`,
+  opts:[
+    { t:"供，砸锅卖铁也供", eff:{money:-52,family:20},
+      msg:"你把定期取了，把能动的都动了。\n\n{TA子}走的那天在机场抱了你一下，说爸你别太累。\n\n回来的路上你算了一笔账，算完发现自己五十多了，存款回到了三十岁的水平。你笑了一下，觉得挺值。" },
+    { t:"供不起，让{TA子}在国内读", eff:{money:-9,family:-17},
+      msg:"{TA子}说没关系，国内也挺好。说得很轻松。\n\n后来{TA子}确实在国内读得很好。\n\n但有一年过年，{TA子}的同学来家里坐了坐，聊起在国外的事，{TA子}一直在听，一句话没说。" },
+    { t:"想想办法，找人帮忙", cost:3, eff:{money:-25,family:14,risk:28,network:-9},
+      msg:"有人替你解决了一部分。你没问怎么解决的，对方也没说。\n\n{TA子}顺利出去了。\n\n从那以后，那个人偶尔会给你打电话，聊些不痛不痒的事。每次接电话你都很客气。" },
+  ]},
+
+{ id:"paylube", w:10, cond:s=>s.money>=45 && s.rank>=2 && s.rank<=6, tag:"抉择",
+  title:"花钱办事",
+  text:`一件卡了很久的事，其实有办法。\n\n有人给你指了条路：这个数——他比了个手势——就能疏通。\n\n你手里有这个数。`,
+  opts:[
+    { t:"花，事情要紧", eff:{money:-16,network:14,merit:7,risk:23},
+      msg:"事情三天就办成了。\n\n你后来又用过两次这条路。第三次的时候你已经不需要别人指了。" },
+    { t:"不花，按程序磨", cost:3, eff:{merit:-5,health:-5,risk:-6},
+      msg:"你跑了七趟，磨了四个月，最后还是办成了。\n\n办成那天你在楼道里长长舒了一口气。\n\n没有人知道你为什么那么高兴——在别人看来，这不过是件本来就该办成的事。" },
+    { t:"换个思路，从别处绕", cost:4, eff:{merit:9,network:5,health:-6},
+      msg:"你花了两个月找到了另一条完全合规的路径，还顺手把流程里的一个卡点提了整改建议。\n\n那份建议后来被采纳了。\n\n这是笨办法。笨办法的好处是，你不用记住自己说过什么。" },
+  ]},
+
+{ id:"sickleave_buy", w:11, cond:s=>s.health<=58 && s.money>=30 && s.age>=45, tag:"身体",
+  title:"疗养",
+  text:`体检的几项指标一直下不来。医生建议住院系统调理一个月。\n\n一个月。你上一次连续离开工作岗位超过三天，是十七年前。`,
+  opts:[
+    { t:"去，把手头的事都交出去", cost:4, eff:{money:-13,health:24,merit:-13,network:-6},
+      msg:"你在疗养院住了三十一天。前十天睡不着，中间十天睡得很沉，最后十天开始能看进去书了。\n\n回单位那天，你发现没有你，一切照常运转。\n\n这个发现让你难受了半天，然后轻松了很多年。" },
+    { t:"开药带回去，边干边治", eff:{money:-5,health:5,merit:4},
+      msg:"药你吃了三个月，指标降了一点点。\n\n然后又升回去了。" },
+    { t:"不去，忙完这阵再说", eff:{health:-9,merit:7},
+      msg:"这阵一直没忙完。\n\n后来你才明白，这个系统里没有「忙完这阵」，只有「下一阵」。" },
+  ]},
+
+{ id:"laojia_house", w:8, cond:s=>s.money>=70 && s.age>=40 && s.age<=60, once:true, tag:"生活",
+  title:"老家",
+  text:`村里现在家家都盖了新房。你家那栋还是九十年代的样子。\n\n你妈在电话里说了三次「不用管我们」，说三次的意思你懂。`,
+  opts:[
+    { t:"盖，盖最好的那种", eff:{money:-28,family:16,risk:8},
+      msg:"三层小楼，全村最气派。封顶那天放了很长的鞭炮。\n\n你妈在电话里的声音是你很多年没听过的。\n\n后来村里有人来找你办事，第一句话都是：「您家那房子真好。」" },
+    { t:"翻修一下，够住就行", eff:{money:-14,family:9},
+      msg:"换了屋顶、重铺了地、装了热水器和空调。\n\n你妈很满意。她这辈子想要的东西，其实一直都不多。" },
+    { t:"接他们进城住", eff:{money:-9,family:11,health:-3},
+      msg:"他们来住了四个月，然后坚持要回去。\n\n临走那天你妈说：城里好，就是没人跟我说话。\n\n你送他们上车，站在路边看了很久。" },
+  ]},
+
+{ id:"salary_card", w:8, cond:s=>s.flags.married && s.age<=50, once:true, tag:"生活",
+  title:"工资卡",
+  text:`结婚这些年，工资卡一直在你自己手里。\n\n有天晚上她很随意地提了一句：要不以后卡放我这儿吧，我来管。\n\n这句话她大概想了很久才说出口。`,
+  opts:[
+    { t:"给了", eff:{family:14,money:3},
+      fn:s=>{s.flags.cardGiven=true},
+      msg:"从那以后你每月有固定的零花钱。\n\n奇怪的是，家里的钱反而攒下来了——她比你会过日子。\n\n更奇怪的是，后来有人想给你点什么，你第一个念头是：这钱没法解释。\n\n这道防线是她无意中给你修的。" },
+    { t:"说自己拿着方便", eff:{family:-9,risk:6},
+      msg:"她「嗯」了一声，没再提。\n\n那张卡后来还是在你手里。你有过几笔钱，她一直不知道。\n\n不知道对她是好事。你一直这么跟自己说。" },
+  ]},
+
+
+/* ================= 孩子 ================= */
+{ id:"kid_school", w:12, pri:4, cond:s=>kidAge(s)>=5 && kidAge(s)<=7, once:true, tag:"家庭",
+  title:"择校",
+  text:`{子女}该上小学了。片区对口的那所一般，好的那所在城东，隔了两个学区。\n\n你打听了一下，发现这件事对你来说其实不难——一个电话的事。\n\n难的是打不打这个电话。`,
+  opts:[
+    { t:"打了那个电话", cost:1, eff:{family:12,network:-6,risk:14},
+      msg:"{TA子}进了城东那所。开学第一天你去送，校长在门口特意跟你握了手。\n\n那一握持续了大概三秒钟。三秒钟里你想了很多事，包括你二十二岁那年是怎么想的。" },
+    { t:"就上片区对口的", eff:{family:-5,risk:-4,merit:3},
+      msg:"你什么也没做。{TA子}在家门口那所读了六年，成绩中等偏上。\n\n后来有一次{TA子}随口说：我们班主任说，我们学校跟城东那边没法比。\n\n你「嗯」了一声，没接话。" },
+    { t:"买学区房，正经排队", eff:{money:-38,family:9,risk:-3},
+      msg:"你把积蓄拿出来大半，在城东买了套小的。\n\n这是最贵也最干净的一条路。签合同那天你手有点抖，但那晚睡得很踏实。" },
+  ]},
+
+{ id:"kid_teacher", w:11, pri:4, cond:s=>kidAge(s)>=8 && kidAge(s)<=11, once:true, tag:"家庭",
+  title:"班主任",
+  text:`家长会后，班主任单独留了你几分钟。\n\n聊了两句{子女}的情况，然后她忽然说：您是不是在市里工作？我先生单位有点事想请教……\n\n她说这话的时候，脸上带着一种你很熟悉的表情。`,
+  opts:[
+    { t:"顺水推舟，留了电话", eff:{network:8,risk:11,family:6},
+      msg:"她先生的事你帮着问了一句，不难办。\n\n从那以后{子女}在班里成了「重点关照对象」——作业批得更细，座位调到了中间。\n\n{TA子}回家说：妈说老师最近对我特别好。你笑了笑，说那是你自己争气。" },
+    { t:"客气地推了", eff:{network:-5,family:-3,risk:-5},
+      msg:"你说自己就是个普通办事员，帮不上忙。\n\n她「哦」了一声，笑容淡了一点，然后继续说{子女}的作业问题。\n\n后来{TA子}的座位一直在最后一排。你不知道这两件事有没有关系，你宁愿相信没有。" },
+    { t:"给她讲了正规的办事流程", cost:1, eff:{merit:4,network:2,family:2},
+      msg:"你花了十分钟把该找哪个窗口、带什么材料、大概多久讲清楚了。\n\n她愣了一下，然后认真地记在了备课本背面。\n\n一个月后她发信息说事办成了，比想的还顺。这条信息你留了很久。" },
+  ]},
+
+{ id:"kid_grade", w:11, pri:4, cond:s=>kidAge(s)>=13 && kidAge(s)<=15, once:true, tag:"家庭",
+  title:"下滑",
+  text:`{子女}的成绩从年级前二十掉到了一百开外。\n\n班主任说，主要是初二这一年家里得多盯着。\n\n你上一次辅导{TA子}功课，是三年前。`,
+  opts:[
+    { t:"报最好的补习班，砸钱", eff:{money:-11,family:2,merit:2},
+      msg:"一周五次课，接送有司机。成绩回到了七十名左右，再没上去过。\n\n有天晚上你回家，看见{TA子}趴在餐桌上睡着了，卷子铺了一桌。\n\n你把{TA子}抱回房间，才发现{TA子}已经比你想的重很多了。" },
+    { t:"每周腾出三个晚上自己陪", cost:4, eff:{family:19,merit:-11,health:-4},
+      msg:"你推掉了不少饭局。有两次是在办公室改完材料，赶回家陪{TA子}做完最后一道题。\n\n成绩慢慢回来了，但这不是重点。\n\n重点是那三个月里，{TA子}开始跟你讲学校里的事了。" },
+    { t:"跟{TA子}谈了一次，讲道理", eff:{family:-6,merit:3},
+      msg:"你讲了四十分钟，从自己当年怎么考出来讲到现在的位置。{TA子}一直点头。\n\n谈完你觉得挺成功。\n\n成绩没什么变化。你后来也没再谈第二次。" },
+  ]},
+
+{ id:"kid_silent", w:11, pri:6, cond:s=>kidAge(s)>=14 && kidAge(s)<=18 && s.family<62, once:true, tag:"家庭",
+  title:"他不跟你说话了",
+  text:`你已经记不清{子女}上一次主动跟你说话是什么时候。\n\n吃饭的时候{TA子}低头刷手机，你问一句{TA子}答一句，多一个字都没有。\n\n这不是一天变成这样的。这是很多年一点一点攒出来的。`,
+  opts:[
+    { t:"请假两天，带{TA子}出去走走", cost:4, eff:{family:24,merit:-9,health:-3},
+      msg:"你们去了海边。前一天半几乎没说话。\n\n第二天傍晚，{TA子}忽然说：我小时候你答应过带我来，后来一直没来。\n\n你说我记得。\n\n{TA子}说：你不记得，是我妈告诉你的。\n\n{TA子}说得对。但{TA子}愿意说这句话，这件事本身就已经不一样了。" },
+    { t:"跟{TA子}妈说说，让她多沟通", eff:{family:-8},
+      msg:"你把这件事交给了别人。她试了，效果有限。\n\n很多年后你才明白，{子女}不跟你说话，和{TA子}跟谁说话，是两件事。" },
+    { t:"孩子长大都这样，随他去", eff:{family:-14,merit:5},
+      msg:"你把注意力放回了工作上。那一年你干得很好。\n\n{子女}后来考上了很远的大学，一年回来两次，每次待不满一周。\n\n你们相处得很客气。客气到你有时候会想，这大概就是你自己选的。" },
+  ]},
+
+{ id:"kid_ask", w:14, pri:4, cond:s=>kidAge(s)>=15 && kidAge(s)<=20 && s.risk>=35, once:true, tag:"家庭",
+  title:"一个问题",
+  text:`晚饭后{子女}没走，在餐桌边坐了一会儿。\n\n然后{TA子}说：爸，我同学他爸也在体制内，最近被查了。\n\n停了两秒，{TA子}又说：你们那边……是不是都那样。\n\n{TA子}问得很轻，不像是指控，倒像是真的想知道。`,
+  opts:[
+    { t:"说：不是，大部分人都很干净", eff:{family:5,risk:5},
+      msg:"你说得很自然，自然到你自己都有点吃惊。\n\n{TA子}「哦」了一声，说那就好，然后回房间了。\n\n你在餐桌边又坐了很久。那顿饭的碗是你洗的，这是你半年来第一次洗碗。" },
+    { t:"说：有的人是那样。我尽量不那样", eff:{family:11,health:-4},
+      msg:"你没有替谁辩解，也没有把自己摘干净。\n\n{TA子}看了你几秒，说：那你要小心点。\n\n这是{TA子}这三年跟你说过的最长的一句关心。\n\n那天晚上你把书房柜子最上层的东西清理了一遍。" },
+    { t:"说：这些事你别管，好好读书", eff:{family:-13,risk:3},
+      msg:"{TA子}站起来回房间了，门关得不轻不重。\n\n后来{TA子}再没问过你任何跟工作有关的事。\n\n你不知道{TA子}是不再好奇了，还是已经自己有了答案。" },
+    { t:"什么也说不出来", eff:{family:-6,health:-7,risk:-6},
+      fn:s=>{s.flags.kidKnows=true},
+      msg:"你张了张嘴，最后只说了句：饭凉了，去写作业吧。\n\n{TA子}走了以后你一个人坐着，坐到客厅的灯自动灭了。\n\n那天晚上你想了很多事。第二天你退了两件东西。\n\n【这一晚之后，你做事谨慎了很多】" },
+  ]},
+
+{ id:"kid_exam", w:14, pri:4, cond:s=>kidAge(s)>=21 && kidAge(s)<=25 && !s.flags.kidPathSet, once:true, tag:"抉择",
+  title:"他想考公",
+  text:`{子女}大学快毕业了。吃饭的时候{TA子}说，打算考公务员，问你的意见。\n\n你放下筷子，发现自己一时答不上来。\n\n你在这个系统里待了三十年。你比任何人都清楚它能给什么、要什么。而现在{TA子}要走进来。`,
+  opts:[
+    { t:"支持，还帮{TA子}参谋报哪个岗", cost:2, eff:{family:14,network:-4},
+      fn:s=>{s.flags.kidCivil=true; s.flags.kidPathSet=true;},
+      msg:"你翻了三个晚上的职位表，比{TA子}还认真。哪个单位有前途、哪个岗位是坑，你一眼就看得出来。\n\n{TA子}考上了，在另一个市。\n\n每次通电话你们聊的都是单位的事。{TA子}抱怨的那些，你三十年前一模一样地抱怨过。\n\n【档案 · 子承父业】" },
+    { t:"劝{TA子}别来，去外面试试", eff:{family:-6,health:-4},
+      fn:s=>{s.flags.kidPathSet=true;},
+      msg:"你说了很多，说得比你想象的激动。\n\n{TA子}听完问了一句：那你为什么不走？\n\n你答不上来。\n\n{TA子}最后去了南方一家公司。头两年很难，后来站住了。你从没跟别人说过{TA子}在哪儿工作——不是不好意思，是不知道怎么说。" },
+    { t:"说这是{TA子}自己的事，你不干涉", eff:{family:3},
+      fn:s=>{ if(chance(.55)){ s.flags.kidCivil=true; }
+              s.flags.kidPathSet=true;
+              s.pendMsg = s.flags.kidCivil
+                ? "{TA子}还是考了，自己复习，自己报的岗，没让你帮一点忙。\n\n上岸那天{TA子}给你发了条信息，就四个字：我考上了。\n\n你回了个「好」，然后一个人在办公室坐了很久。\n\n【档案 · 子承父业】"
+                : "{TA子}没考。去了一家你说不清是做什么的公司。\n\n你从没问过{TA子}一个月挣多少。你怕问出来比你多，也怕问出来比你少。"; } },
+  ]},
+
+{ id:"kid_wedding", w:13, pri:4, cond:s=>kidAge(s)>=26 && kidAge(s)<=32 && !s.flags.kidWed, once:true, tag:"家庭",
+  title:"婚礼",
+  text:`{子女}要结婚了。\n\n办公室的人已经在打听日子。按你现在的位置，这场婚礼要是放开了办，能来几百号人。\n\n你妻子问你：办多大？`,
+  opts:[
+    { t:"两桌，只请至亲", eff:{family:15,money:-4,network:-9,risk:-11},
+      fn:s=>{s.flags.kidWed=true},
+      msg:"你提前跟办公室打了招呼：不收礼，不通知。\n\n那天只有十几个人，{子女}和爱人挨桌敬酒，敬到你这儿时说了句谢谢爸。\n\n有几个想来的人没能来，心里有点意见。这点意见你担得起。" },
+    { t:"正常办，来的都是熟人", eff:{family:9,money:14,network:6,risk:16},
+      fn:s=>{s.flags.kidWed=true},
+      msg:"三十多桌。礼金你让办公室的人登了记，说以后都要还的。\n\n有些人的礼你根本不认识是谁送的。\n\n那本礼簿你锁在抽屉里，锁了很多年。" },
+    { t:"放开办，这辈子就这一次", eff:{family:11,money:46,network:14,risk:36},
+      fn:s=>{s.flags.kidWed=true},
+      msg:"酒店最大的宴会厅，八十多桌。来的人里有一半你叫不出名字。\n\n{子女}后来说：爸，那天我像个道具。\n\n这句话你当时笑着挡过去了。很多年后你还记得。" },
+  ]},
+
+{ id:"kid_house", w:13, pri:4, cond:s=>kidAge(s)>=25 && kidAge(s)<=33 && !s.flags.kidHouse, once:true, tag:"家庭",
+  title:"首付",
+  text:`{子女}要买房，首付还差六十万。\n\n你手上有这个钱。问题是这六十万一旦转出去，就变成了一笔需要解释的钱——如果哪天有人问起的话。`,
+  opts:[
+    { t:"转，光明正大地转", eff:{money:-40,family:17},
+      fn:s=>{s.flags.kidHouse=true},
+      msg:"你一次性转了过去，还留了转账凭证和一份简单的说明。\n\n钱是干净的，账是清楚的。\n\n{子女}拿到钥匙那天发了张照片过来，空荡荡的客厅里站着{TA子}和{TA子}爱人。你把那张照片存了下来。" },
+    { t:"分几次给，走亲戚的账", eff:{money:-40,family:12,risk:22},
+      fn:s=>{s.flags.kidHouse=true},
+      msg:"分了七次，走了三个人的账。麻烦，但表面上看不出来。\n\n房子买了，{子女}很高兴。\n\n你没告诉{TA子}这笔钱是怎么过去的。有些事情知道的人越少越好，你一直这么认为。" },
+    { t:"只给三十万，剩下让{TA子}自己扛", eff:{money:-20,family:-4,risk:-4},
+      fn:s=>{s.flags.kidHouse=true},
+      msg:"{子女}贷了更多的款，每个月还得紧巴巴。\n\n{TA子}没抱怨，只是有一次提到房贷时说了句：也挺好，自己挣的踏实。\n\n这句话你听着有点耳熟。你二十多岁的时候，好像也说过差不多的话。" },
+  ]},
+
+
+/* ================= 冲顶通道：正部之后的四步 ================= */
+{ id:"top1", w:0, force:true, tag:"顶 局",
+  title:"名单",
+  text:s=>{
+    const t = s.flags.topTries || 0;
+    if(t === 0) return `一个很小范围的会上，有人提到了你的名字。\n\n消息传到你耳朵里时已经隔了两道弯，措辞很谨慎：「上面在考虑几个人。」\n\n你在这个位置上待了${s.yearsInRank}年。你比谁都清楚，这种消息传到你这儿，本身就是一种信号。`;
+    if(t === 1) return `又是那句话，又隔了两道弯：「上面在考虑几个人。」\n\n上一次听到这句话是${s.year - (s.flags.topStageYear||s.year)}年前。那之后什么也没发生，你把办公室的绿萝换了两茬。\n\n这一次你听完没什么反应，先把手里那页翻完了。`;
+    return `第三次了。\n\n这一回连传话的人都换了，语气比前两次都更客气一点——客气到你听得出来，他自己也不太信。\n\n你忽然意识到，你已经不再关心这句话是真是假，你只想知道它还要来几次。`;
+  },
+  opts:[
+    { t:"什么都不做，照常上班", cost:1, eff:{merit:5,risk:-4},
+      fn:s=>{ s.flags.topStage=1; s.flags.topStageYear=s.year; s.flags.topQuiet=true; s.flags.topTries=(s.flags.topTries||0)+1;
+        s.pendMsg="接下来的半年你什么都没变：一样开会，一样批文件，一样六点半到办公室。\n\n有人来试探，你都笑着岔开了。\n\n【进入考察视野 · 你选择了最稳的那种姿态】"; } },
+    { t:"该走动的走动，让该知道的人知道", cost:3, eff:{network:14,risk:12},
+      fn:s=>{ s.flags.topStage=1; s.flags.topStageYear=s.year; s.flags.topPush=true; s.flags.topTries=(s.flags.topTries||0)+1;
+        s.pendMsg="你见了几个人，说了些很含蓄的话。\n\n效果是有的——你的名字从「几个人」里被单独提出来过一次。\n\n代价也是有的：有人开始注意你最近在见谁。\n\n【进入考察视野 · 但你留下了痕迹】"; } },
+    { t:"主动表态：年龄大了，让年轻人来", eff:{network:9,merit:-6},
+      fn:s=>{ s.flags.topStage=1; s.flags.topStageYear=s.year; s.flags.topHumble=true; s.flags.topTries=(s.flags.topTries||0)+1;
+        s.pendMsg="你在一次谈话里说了这句话，说得很诚恳。\n\n对方看了你几秒，说：这个不是你说了算的。\n\n这句话你回味了很久。它可能是拒绝，也可能是别的意思。\n\n【进入考察视野 · 以退为进】"; } },
+  ]},
+
+{ id:"top2", w:0, force:true, tag:"顶 局",
+  title:"考察",
+  text:s=>((s.flags.topTries||1) > 1 ? `考察组又进驻了。还是七个人，换了三张脸。\n\n流程你已经熟了：他们会找你谈三次，找你的下属谈四十多次。上一次他们也是这么问的。\n\n第十八天，组长单独找你，问了同一个问题：\n\n「这些年，有没有什么是你希望我们别查到的？」` : `考察组进驻了，七个人，为期二十天。\n\n他们找你谈了三次，找你的下属谈了四十多次，调走了你近十五年经手的全部重大事项。\n\n第十八天,组长单独找你,只问了一个问题：\n\n「这些年，有没有什么是你希望我们别查到的？」`),
+  opts:[
+    { t:"说：有。然后把该说的都说了", cost:3, eff:{health:-7},
+      fn:s=>{
+        const bad=[];
+        if(s.risk >= (s.flags.recused ? 34 : 24)) bad.push("你说的那些，比他们查到的少。");
+        if(s.health < 42) bad.push("体检报告出来了，两项指标画了红圈。");
+        if(!(s.flags.bigwin || s.flags.crisis)) bad.push("履历很完整。完整得像一份没有起伏的档案。");
+        if(s.ability < 50) bad.push("专业能力这一项，评价是「尚可」。这两个字在这个层级是差评。");
+        if(bad.length){
+          s.flags.topStage=0; s.flags.topStageYear=s.year; s.risk=cl(s.risk-6,0,140);
+          const shut = (s.flags.topTries||0) >= 4;
+          if(shut) s.flags.topDoorShut = true;
+          s.pendMsg="谈话结束得很平静。\n\n三个月后考察组撤了，没有下文。\n\n很久之后你才听到一句：\n\n「"+pick(bad)+"」\n\n"
+            + (shut ? "【这一次之后，再没有人提起过你的名字】" : "【考察未通过 · 若干年后或许还有机会】");
+        } else {
+          s.flags.topStage=2; s.flags.topStageYear=s.year; s.risk=cl(s.risk-12,0,140);
+          s.pendMsg="你说了四个多小时。有些事你自己都快忘了。\n\n组长一直在记，中间没有打断过你一次。\n\n最后他合上本子，说：谢谢你说这些。\n\n【考察通过 · 只剩最后一步】";
+        }
+      } },
+    { t:"说：没有", eff:{},
+      fn:s=>{
+        const clean = s.risk < 12 && (s.flags.bigwin || s.flags.crisis) && s.health >= 45 && s.ability >= 55;
+        if(clean){
+          s.flags.topStage=2; s.flags.topStageYear=s.year;
+          s.pendMsg="你说得很干脆。\n\n组长笑了一下，说：这句话我这些年听过很多次，能站得住的不多。\n\n二十天后他们撤了。你的材料一路往上走。\n\n【考察通过 · 只剩最后一步】";
+        } else {
+          s.flags.topStage=0; s.flags.topStageYear=s.year; s.risk=cl(s.risk+10,0,140);
+          const shut = (s.flags.topTries||0) >= 4;
+          if(shut) s.flags.topDoorShut = true;
+          s.pendMsg="你说得很干脆。\n\n组长点点头，没有接话，翻过了那一页。\n\n后来什么消息也没有。你到很久以后才明白，那个问题不是问你有没有，是问你敢不敢说。\n\n"
+            + (shut ? "【三次都停在同一道门口。这一次你知道不会再有第四次了】" : "【考察未通过】");
+        }
+      } },
+  ]},
+
+{ id:"top3", w:0, force:true, tag:"顶 局",
+  title:"最后一件事",
+  text:s=>`还剩最后一道。\n\n上面交给你一件事：一个跨了三个省、拖了十一年、四任前任都没能推动的事。给你两年。\n\n交办的时候只说了一句：「做成了再说别的。」`,
+  opts:[
+    { t:"接。两年里什么都不管，只干这一件", cost:5, eff:{health:-14,family:-16},
+      fn:s=>{
+        const score = s.merit*0.42 + s.network*0.30 + s.ability*0.20 + rnd(0,26);
+        if(score >= 96){
+          s.rank = 9; s.yearsInRank = 0; s.merit = cl(s.merit*0.8);
+          s.overtime = true; s.retireAge = 999;
+          s.flags.topStage=3; s.flags.topStageYear=s.year; s.flags.topDone=true;
+          s.log.push([s.year, "晋升为 副国级"]);
+          s.pendMsg="两年。你跑了三十七趟，开了不计其数的协调会，最后是在一个雨夜里签的字。\n\n任命通知下来那天，办公室里很安静。\n\n你走到窗前，看见楼下一个年轻人抱着一摞材料快步走过。那摞材料大概有二十七公分高。\n\n【晋升为副国级 · 从此退休时间由你自己决定】";
+        } else {
+          s.flags.topStage=0; s.flags.topStageYear=s.year; s.merit=cl(s.merit-10);
+          s.pendMsg="两年到了。事情推进了大概六成。\n\n没有人说你失败，材料里写的是「取得阶段性进展」。\n\n这六个字你看了很久。你知道它的意思是：不够。\n\n【最后一步未成】";
+        }
+      } },
+    { t:"接，但按常规节奏推，不拿命换", cost:3, eff:{health:-6,family:-4},
+      fn:s=>{
+        const score = s.merit*0.42 + s.network*0.30 + s.ability*0.20 + rnd(0,26);
+        if(score >= 112){
+          s.rank = 9; s.yearsInRank = 0; s.merit = cl(s.merit*0.8);
+          s.overtime = true; s.retireAge = 999;
+          s.flags.topStage=3; s.flags.topStageYear=s.year; s.flags.topDone=true;
+          s.log.push([s.year, "晋升为 副国级"]);
+          s.pendMsg="你没有把自己耗干，事情也做成了。\n\n有人说你运气好。你自己知道，是前面三十年攒下的东西在这两年里一起兑现了。\n\n【晋升为副国级】";
+        } else {
+          s.flags.topStage=0; s.flags.topStageYear=s.year;
+          s.pendMsg="两年过去，事情停在了老地方。\n\n你身体还好，家里也还好。只是那件事没成。\n\n后来接手的人用了四年做成了。他比你年轻十二岁。\n\n【最后一步未成】";
+        }
+      } },
+    { t:"不接。这个岁数了，不值得", eff:{health:9,family:14,merit:-9},
+      fn:s=>{ s.flags.topStage=9; s.flags.topStageYear=s.year;
+        s.pendMsg="你说自己身体撑不住了，请组织另外考虑人选。\n\n对方沉默了几秒，说：也好。\n\n那一年你按时下班了很多次。你女儿说你气色比前几年好。\n\n【你自己关上了那扇门】"; } },
+  ]},
+
+{ id:"top4", w:0, force:true, tag:"顶 局",
+  title:"更上一层",
+  text:s=>`你在这个位置上已经${s.yearsInRank}年了。\n\n有一天你被单独叫去谈话。谈话的人比你还年长，说话很慢。\n\n他说：还有一个位置。这个国家里，只有一个人比它更高。\n\n然后他问：你觉得你还能干几年？`,
+  opts:[
+    { t:"说：只要还站得住，就干到站不住为止", cost:4, eff:{health:-9},
+      fn:s=>{
+        const ok = s.risk < 10 && s.health >= 48 && s.merit >= 78 && s.network >= 78
+                && (s.flags.bigwin && s.flags.crisis);
+        if(ok && chance(.62)){
+          s.rank = 10; s.topped = true;
+          s.log.push([s.year, "任正国级职务"]);
+          return endGame();
+        }
+        s.flags.topStage=3; s.flags.topStageYear=s.year;
+        const why = s.risk >= 10 ? "到了这个高度，任何一点旧事都是不可承受的。"
+          : s.health < 48 ? "体检结论，不予通过。"
+          : (!(s.flags.bigwin && s.flags.crisis)) ? "履历很完整，但少了一次真正把天捅破又补上的经历。"
+          : (s.merit < 78 || s.network < 78) ? "推荐环节，差了几票。"
+          : "时机没有到。有些事情不是能力问题。";
+        s.pendMsg="你说得很平静。\n\n他点点头，说好，我知道了。\n\n后来这件事再没有人提起。很久以后你才辗转听到一句：\n\n「"+why+"」\n\n【未能更进一步 · 若干年后或许还有机会】";
+      } },
+    { t:"说：差不多了，该让位置了", eff:{family:16,health:6,merit:-4},
+      fn:s=>{ s.flags.topStage=9; s.flags.topStageYear=s.year;
+        s.pendMsg="你说这句话的时候，自己都有点意外——你居然是真心的。\n\n他看了你很久，说：难得。\n\n从那天起你睡得踏实了很多。你在这个位置上又干了几年，然后干干净净地退了。\n\n【你自己停在了这里】"; } },
+  ]},
+
+
+/* ================= 长链回响：多年以后 ================= */
+{ id:"echo_zhou", w:16, pri:6, once:true, tag:"回 响",
+  cond:s=>s.flags.zhouSeed && s.rank>=4 && (s.year-(s.flags.zhouYear||9999))>=20,
+  title:"新来的年轻人",
+  text:s=>{
+    const yrs = s.year - s.flags.zhouYear;
+    return `单位来了个应届生，被安排在最里面那张桌子。\n\n你去那层楼办事，路过时看了一眼——桌上一台落了灰的电脑，一摞不知道哪年的文件。\n\n${yrs}年前，老周在那个位置上跟你说过半句话：「这里最要紧的不是干活。」他没说下半句。\n\n那个年轻人抬头看见你，慌忙站了起来。`;
+  },
+  opts:[
+    { t:"把那半句话告诉他", cost:2, eff:{network:9,family:5},
+      msg:s=>s.flags.zhouSeed==="ask"
+        ? "你说：最要紧的是让对的人知道你在干活。\n\n他愣了一下，然后飞快地点头，像是记下了什么了不得的东西。\n\n你转身走的时候忽然明白，当年老周请你吃那顿饭，大概也是这个心情——他知道自己用不上了，所以想给一个还用得上的人。\n\n【长链回响 · 老周的茶】"
+        : "你说：最要紧的是让对的人知道你在干活。\n\n说完你自己停了一下。这句话你没有从任何人那里听来过，是你自己用二十多年撞出来的。\n\n当年老周想说的大概就是这个。你没给他机会说完。\n\n【长链回响 · 老周的茶】" },
+    { t:"只说了句「好好干」", eff:{merit:4},
+      msg:s=>`你说了句好好干，然后走了。\n\n身后那个年轻人大概会在那张桌子上坐很多年。他会不会变成你，或者变成老周，你不知道。\n\n${s.flags.zhouSeed==="scorn"?"你当年也是这么被路过的。":"你当年好歹还有人请你吃了顿饭。"}\n\n【长链回响 · 老周的茶】` },
+    { t:"什么也没说，绕开了", eff:{merit:2,family:-4},
+      msg:"你换了条路走。\n\n那张桌子你没再路过第二次。有些东西你不想看见，因为看见了就得承认，你也在那儿坐过。\n\n【长链回响 · 老周的茶】" },
+  ]},
+
+{ id:"echo_archive", w:16, pri:6, once:true, tag:"回 响",
+  cond:s=>s.flags.archiveSorted && s.rank>=3 && (s.year-(s.flags.archiveYear||9999))>=12,
+  title:"九八年的那份文件",
+  text:s=>{
+    const yrs = s.year - s.flags.archiveYear;
+    return `一桩历史遗留问题炸了：三百多户，涉及一份九十年代的批复，而那份批复谁也找不到。\n\n会开到一半，你忽然想起来——${yrs}年前那个春节，你在值班室待了六天，把十几年的旧档案分类编了号。\n\n你记得那份文件在第几格。`;
+  },
+  opts:[
+    { t:"当场说出来，带人去找", cost:3, eff:{merit:22,network:11},
+      fn:s=>{s.flags.bigwin=true;},
+      msg:"三个小时后，那份泛黄的批复摆在了会议桌上。三百多户的事有了依据。\n\n散会时一把手问你：你怎么知道在那儿？\n\n你说，二十多年前我整理过。\n\n他看了你很久，说：难为你还记得。\n\n那个春节除夕，门卫老李给你端了碗饺子。你当时觉得那六天什么意义也没有。\n\n【长链回响 · 值班室的档案】【重大政绩】" },
+    { t:"会后自己去找，找到了再报", cost:4, eff:{merit:15,network:4,health:-3},
+      msg:"你一个人在档案馆待了一整晚，把那一格翻了出来。\n\n第二天你把复印件放在一把手桌上，什么也没多说。\n\n他后来在别的场合提过一次：有的同志，是能从故纸堆里翻出东西来的。\n\n那六天的除夕，终于有了一点意义。\n\n【长链回响 · 值班室的档案】" },
+    { t:"不说。这事牵扯太深", eff:{merit:-6,risk:-9,health:2},
+      msg:"你什么也没说。会议最后定的是「继续核查」，也就是继续拖。\n\n那一格档案还在那儿，编号是你写的。\n\n你后来路过档案馆几次，都没进去。\n\n【长链回响 · 值班室的档案】" },
+  ]},
+
+{ id:"echo_liu", w:16, pri:6, once:true, tag:"回 响",
+  cond:s=>s.flags.liuDrank && s.rank>=5 && (s.year-(s.flags.liuYear||9999))>=14,
+  title:"小刘",
+  text:s=>{
+    const yrs = s.year - s.flags.liuYear;
+    return `有件事要邻市配合，绕不过去。\n\n邻市的一把手叫刘志远。你翻资料的时候愣了一下——${yrs}年前那场招商饭局，替你喝了八两、当晚进了医院的那个年轻人，就叫小刘。\n\n他第二天照常上了班，笑着说没事。那年他二十七岁。`;
+  },
+  opts:[
+    { t:"直接打电话，先提当年那件事", cost:2, eff:{network:14,family:4},
+      msg:"你说：小刘，十几年前那顿酒，我一直记着。\n\n电话那头静了两秒，然后他笑了：领导您还记得这个。\n\n事情办得很顺。挂电话前他说了句：那时候年轻，不懂得推。\n\n这句话你听完，握着手机坐了一会儿。\n\n【长链回响 · 替你喝酒的小刘】" },
+    { t:"按正常程序对接，不提旧事", cost:2, eff:{merit:8,network:3},
+      msg:"两边办公室对接得很规范，事情也办成了。\n\n中间通过一次电话，他称呼你的职务，你称呼他的职务，全程二十分钟，一句私话没有。\n\n他很客气。客气得让你想起十几年前那个晚上。\n\n【长链回响 · 替你喝酒的小刘】" },
+    { t:"让秘书去谈，自己不出面", eff:{merit:5,network:-7},
+      msg:"事情办成了，你和他没通过话。\n\n后来一次会议上远远见过一面，他朝你点了点头。\n\n你回了个点头。这大概是你们之间最后一次交流。\n\n【长链回响 · 替你喝酒的小刘】" },
+  ]},
+
+];
+
+
+/* ==================================================================
+   游戏状态
+   ================================================================== */
+let S = null;
+
+function newGame(){
+  S = {
+    gender:"male", year:2026, age:22, rank:0, yearsInRank:0,
+    merit:5, network:5, health:90, family:60, money:2, risk:0, legit:2, grey:0,
+    ability:10,
+    energyPool:0, alloc:{work:0,rel:0,fam:0,hp:0,study:0},
+    phase:"event", queue:[], curEv:null, evIdx:0,
+    seen:{}, evLast:{}, evCount:{}, flags:{}, log:[], deltas:{}, pendMsg:null,
+    patron:{ name:"李主任", favor:20, alive:true },
+    rival:{ name:"王建", rank:0 },
+    waves:[], wavePool:WAVES.map(w=>w.id), nextWave:2030+ri(0,2),
+    retireAge:65, retired:false, overtime:false, dead:false,
+    busted:false, quit:false, sickLeave:false, diedInOffice:false,
+    yearEnd:null, ending:null, notices:[], forceEvent:null, lowFamYears:0,
+    promoMsg:null, guojiFailMsg:null,
+  };
+  startYear();
+}
+
+/* ---------- 浪潮 ---------- */
+function waveMods(){
+  const m = { meritMul:1, slotMul:1, incomeMul:1, healthMul:1, familyMul:1,
+              studyMul:1, riskGainMul:1, riskLower:0, ageCoefBonus:0, retirePlus:0 };
+  S.waves.forEach(w=>{
+    const W = WAVES.find(x=>x.id===w.id); if(!W) return;
+    for(const k in W.mods){
+      if(k==="riskLower"||k==="ageCoefBonus"||k==="retirePlus") m[k]+=W.mods[k];
+      else if(typeof W.mods[k]==="number") m[k]*=W.mods[k];
+    }
+  });
+  return m;
+}
+function activeTags(){ return S.waves.map(w=>(WAVES.find(x=>x.id===w.id)||{}).tag).filter(Boolean); }
+
+function tickWaves(){
+  S.waves = S.waves.filter(w=>S.year < w.end);
+  if(S.year >= S.nextWave && S.wavePool.length){
+    const id = pick(S.wavePool);
+    S.wavePool = S.wavePool.filter(x=>x!==id);
+    const W = WAVES.find(x=>x.id===id);
+    S.waves.push({ id, end:S.year + ri(5,7) });
+    S.nextWave = S.year + ri(6,9);
+    if(W.mods.retirePlus) S.retireAge += W.mods.retirePlus;
+    S.notices.push({ t:"时 代 浪 潮", b:`【${W.name}】\n\n${W.desc}` });
+    S.log.push([S.year, "时代浪潮：" + W.name]);
+  }
+}
+
+/* ---------- 折旧系数：年轻时成绩转瞬即逝，年长后履历与人脉都更"结构化" ---------- */
+function decayMul(){
+  const byAge = S.age < 40 ? 1.00
+              : S.age < 50 ? 0.76
+              : S.age < 58 ? 0.54
+              : 0.36;
+  const byRank = S.rank >= 7 ? 0.75      // 副部以上：履历进档案，关系是位置带来的
+              : S.rank >= 5 ? 0.85       // 副厅以上
+              : 1.00;
+  return byAge * byRank;
+}
+
+/* ---------- 健康损耗系数：年轻时扛得住，35 岁后每一下都更贵 ---------- */
+function hpLossMul(){
+  const a = S.age;
+  return a < 30 ? 0.42
+       : a < 35 ? 0.68
+       : a < 50 ? 1.00
+       : a < 60 ? 1.15
+       : 1.30;
+}
+
+/* ---------- 精力 ---------- */
+function baseEnergy(){
+  let e = S.age<=35 ? 12 : S.age<=50 ? 10 : 9;
+  if(S.health < 34) e -= 2;
+  if(S.health < 16) e -= 2;
+  return Math.max(3, e);
+}
+
+/* ---------- 事件复现控制 ----------
+   DEFAULT_CD 冷却年数：同一事件多少年内不再抽中（可被事件自身的 cd 覆盖）
+   FATIGUE    疲劳系数：每看过一次，权重按 1/(1+FATIGUE*次数) 递减
+   nth(id)    当前是第几次看到这个事件，供文案分层使用
+------------------------------------------------ */
+const DEFAULT_CD = 7, FATIGUE = 0.75;
+function nth(id){ return S.evCount[id] || 1; }
+
+/* ---------- 年度开始 ---------- */
+function startYear(){
+  S.notices = []; S.pendMsg = null; S.promoMsg = null; S.yearEnd = null;
+  S.deltas = {};
+  tickWaves();
+  S.energyPool = baseEnergy();
+  S.alloc = {work:0,rel:0,fam:0,hp:0,study:0};
+
+  // 抽事件
+  S.queue = [];
+  if(S.year === 2026){ S.queue.push(EVENTS.find(e=>e.id==="start")); }
+  else if(S.forceEvent){
+    const fe = EVENTS.find(e=>e.id===S.forceEvent);
+    S.forceEvent = null;
+    if(fe) S.queue.push(fe);
+  }
+  if(!S.queue.length && S.year !== 2026){
+    const n = S.overtime ? 1 : (S.age>=62 ? 1 : ri(1,2));
+    const tags = activeTags();
+    const base = EVENTS.filter(e=>{
+      if(e.force) return false;
+      if(e.once && S.seen[e.id]) return false;
+      if(e.waveTag && !tags.includes(e.waveTag)) return false;
+      if(e.cond && !e.cond(S)) return false;
+      if(!S.overtime && e.tag==="晚局") return false;
+      return true;
+    });
+    // 冷却：刚出过的事件先压一段时间；池子被压太狠就放宽
+    const cooled = base.filter(e=>{
+      const last = S.evLast[e.id];
+      return last == null || (S.year - last) >= (e.cd != null ? e.cd : DEFAULT_CD);
+    });
+    const pool = cooled.length >= 6 ? cooled : base;
+    const chosen = [];
+    for(let i=0;i<n && pool.length;i++){
+      // 看过越多次，再抽中的概率越低
+      const wOf = e => e.w * (e.waveTag ? 1.6 : 1) * (e.pri || 1)
+                       / (1 + FATIGUE * (S.evCount[e.id] || 0));
+      let tot = 0; pool.forEach(e=>tot += wOf(e));
+      let r = Math.random()*tot, sel = pool[0];
+      for(const e of pool){ r -= wOf(e); if(r<=0){ sel=e; break; } }
+      chosen.push(sel);
+      pool.splice(pool.indexOf(sel),1);
+    }
+    S.queue = chosen;
+  }
+  S.queue.forEach(e=>{ if(e){ S.evLast[e.id]=S.year; S.evCount[e.id]=(S.evCount[e.id]||0)+1; } });
+  S.evIdx = 0;
+  S.phase = S.queue.length ? "event" : "alloc";
+  S.curEv = S.queue[0] || null;
+  render();
+}
+
+/* ---------- 应用效果 ---------- */
+function applyEff(eff){
+  if(!eff) return;
+  const m = waveMods();
+  const D = S.deltas;
+  const add = (k,v)=>{ D[k]=(D[k]||0)+v; };
+  if(eff.merit!=null){ const v=eff.merit>0?eff.merit*m.meritMul:eff.merit; S.merit=cl(S.merit+v); add("merit",v); }
+  if(eff.network!=null){ S.network=cl(S.network+eff.network); add("network",eff.network); }
+  if(eff.health!=null){ const v=eff.health<0?eff.health*0.55*m.healthMul*hpLossMul():eff.health; S.health=cl(S.health+v); add("health",v); }
+  if(eff.family!=null){ const v=eff.family<0?eff.family*(m.familyMul||1):eff.family; S.family=cl(S.family+v); add("family",v); }
+  if(eff.money!=null){ S.money=Math.max(0,S.money+eff.money); add("money",eff.money);
+    if(eff.money>0 && eff.risk>0) S.grey = (S.grey||0) + eff.money; }   // 说不清的那部分
+  if(eff.risk!=null){ const v=eff.risk>0?eff.risk*0.8*m.riskGainMul:eff.risk; S.risk=cl(S.risk+v,0,140); add("risk",v); }
+}
+
+function chooseOpt(i){
+  const ev = S.curEv, o = ev.opts[i];
+  if(o.cost && o.cost > S.energyPool) return;
+  const needM = (o.eff && o.eff.money < 0) ? -o.eff.money : 0;
+  if(needM > S.money && ev.opts.some(x=>{
+      const n2 = (x.eff && x.eff.money < 0) ? -x.eff.money : 0;
+      return !(x.cost && x.cost > S.energyPool) && n2 <= S.money;
+  })) return;
+  if(o.cost) S.energyPool -= o.cost;
+  S.seen[ev.id] = true;
+  S.pendMsg = null;
+  const before = activeTraits().map(t=>t.id);
+  applyEff(o.eff);
+  if(o.fn) o.fn(S);
+  S.newTraits = activeTraits().filter(t=>!before.includes(t.id)).map(t=>t.name);
+  S.evResult = S.pendMsg || (typeof o.msg === "function" ? o.msg(S) : o.msg) || "";
+  S.evEff = {...S.deltas};
+  S.phase = "evresult";
+  render();
+}
+
+function nextEvent(){
+  S.evIdx++;
+  S.deltas = {};
+  if(S.evIdx < S.queue.length){
+    S.curEv = S.queue[S.evIdx];
+    S.phase = "event";
+  } else {
+    S.phase = "alloc";
+    if(S.quit || S.escaped){ endGame(); return; }
+  }
+  render();
+}
+
+/* ---------- 精力分配 ---------- */
+const ALLOC_CAP = 5;   // 单项精力投入上限：逼玩家取舍，不能全押一栏
+function setAlloc(k, d){
+  const used = Object.values(S.alloc).reduce((a,b)=>a+b,0);
+  if(d>0 && (used >= S.energyPool || S.alloc[k] >= ALLOC_CAP)) return;
+  if(d<0 && S.alloc[k]<=0) return;
+  S.alloc[k] += d;
+  render();
+}
+function confirmAlloc(){
+  const m = waveMods(), a = S.alloc;
+  const D = S.deltas = {};
+  const add=(k,v)=>{ D[k]=(D[k]||0)+v; };
+  const abMul = 1 + S.ability/200;
+
+  if(a.work){ const v=a.work*2.2*abMul*m.meritMul*tMul("workMul"); S.merit=cl(S.merit+v); add("merit",v);
+              const h=-a.work*0.45*m.healthMul*hpLossMul(); S.health=cl(S.health+h); add("health",h);
+              const f=-a.work*0.32; S.family=cl(S.family+f); add("family",f); }
+  if(a.rel){  const v=a.rel*2.3*tMul("relMul"); S.network=cl(S.network+v); add("network",v);
+              const mo=-a.rel*0.28; S.money=Math.max(0,S.money+mo); add("money",mo);
+              const f=-a.rel*0.35; S.family=cl(S.family+f); add("family",f); }
+  if(a.fam){  const v=a.fam*2.8*(m.familyMul||1); S.family=cl(S.family+v); add("family",v);
+              const mo=-a.fam*0.16; S.money=Math.max(0,S.money+mo); add("money",mo); }
+  if(a.hp){   const v=a.hp*2.6; S.health=cl(S.health+v); add("health",v); }
+  if(a.study){const v=a.study*1.7*m.studyMul*studyEff(); S.ability = Math.max(0, S.ability + v);
+              const h=-a.study*0.18*hpLossMul(); S.health=cl(S.health+h); add("health",h); }
+
+  settle();
+}
+
+/* ---------- 年终结算 ---------- */
+function settle(){
+  const m = waveMods();
+  const D = S.deltas;
+  const add=(k,v)=>{ D[k]=(D[k]||0)+v; };
+  const rows = [];
+
+  // 收入支出
+  let inc = SALARY[S.rank] * m.incomeMul + tSum("income");
+  let exp = 3.6 + Math.max(0,(S.age-25))*0.10;
+  exp += SALARY[S.rank] * 0.26;          // 位置越高，人情往来、场面开销越贵
+  if(S.flags.house) exp += 4.6;
+  if(S.flags.married && S.age>=32) exp += 2.2;
+  exp += rnd(0.5,1.8);
+  const net = inc - exp;
+  S.money = Math.max(0, S.money + net); add("money", net);
+  S.legit = Math.max(0, (S.legit ?? 2) + net);   // 只累计工资口径的净额
+  rows.push(["年度收入", "+"+inc.toFixed(1)+" 万"]);
+  rows.push(["年度支出", "−"+exp.toFixed(1)+" 万"]);
+
+  // 自然衰减
+  let hd = S.age<30 ? -0.15 : S.age<35 ? -0.35 : S.age<50 ? -1.2 : S.age<60 ? -2.0 : S.age<70 ? -3.2 : -5.0;
+  hd *= m.healthMul;
+  S.health = cl(S.health + hd); add("health", hd);
+  rows.push(["身体自然衰减", hd.toFixed(1)]);
+
+  let fd = -1.5 + tSum("famDecay");
+  S.family = cl(S.family + fd); add("family", fd);
+  rows.push(["家庭自然疏远", fd.toFixed(1)]);
+
+  // 政绩/人脉折旧
+  const dm = decayMul();
+  const md = -S.merit*0.055*dm*tMul("meritDecay"), nd = -S.network*0.032*dm*tMul("netDecay");
+  S.merit = cl(S.merit+md); S.network = cl(S.network+nd);
+  add("merit", md); add("network", nd);
+  const dLabel = dm >= 0.95 ? "" : `　×${dm.toFixed(2)}`;
+  rows.push(["政绩折旧" + dLabel, md.toFixed(1)]);
+  rows.push(["人脉折旧" + dLabel, nd.toFixed(1)]);
+
+  // 档案词条带来的逐年增减
+  const nY = tSum("netYear"), rY = tSum("riskYear");
+  if(nY){ S.network = cl(S.network + nY); add("network", nY); }
+  if(rY){ S.risk = cl(S.risk + rY, 0, 140); add("risk", rY); }
+
+  // 旧事渐远：风险随时间缓慢淡化
+  if(S.risk > 0){ S.risk = Math.max(0, S.risk*0.960 - 0.6); }
+
+  // 冲顶通道：到了正部之后按阶段推进，不再靠每年掷骰子
+  if(!S.forceEvent && !S.flags.topDoorShut){
+    const st = S.flags.topStage || 0;
+    const wait = S.year - (S.flags.topStageYear || 0);
+    // 摔下来过就得晾几年，不能隔年又把你叫回去谈一次
+    const again = S.flags.topTries ? 3 : 0;
+    if(S.rank === 8 && st === 0 && S.yearsInRank >= 2 && wait >= again) S.forceEvent = "top1";
+    else if(S.rank === 8 && st === 1 && wait >= 1)          S.forceEvent = "top2";
+    else if(S.rank === 8 && st === 2 && wait >= 1)          S.forceEvent = "top3";
+    else if(S.rank === 9 && st === 3 && wait >= 3)          S.forceEvent = "top4";
+  }
+
+  // 外逃窗口：办了境外后路 + 风险到位 → 必然找上门，一生一次
+  if(S.flags.assetsOut && !S.flags.escapeAsked && S.risk >= 40 && !S.forceEvent){
+    S.forceEvent = "escape";
+  }
+
+  // 婚姻危机计数：家庭长期低于 15，触发离婚事件
+  if(S.flags.married && S.family < 15) S.lowFamYears = (S.lowFamYears||0) + 1;
+  else S.lowFamYears = 0;
+  if(S.flags.married && S.lowFamYears >= 3 && !S.forceEvent){
+    S.forceEvent = "divorce"; S.lowFamYears = 0;
+    S.notices.push({ t:"家 中", b:"这个家已经很久没有人说话了。\n\n你有时候会想，是从哪一年开始的。" , gray:true});
+  }
+
+  // 家庭崩盘反噬
+  if(S.family < 30 && chance(S.family < 15 ? 0.55 : 0.3)){
+    const p = -ri(2,5), h = -ri(1,4);
+    S.merit = cl(S.merit+p); S.health = cl(S.health+h);
+    add("merit",p); add("health",h);
+    S.notices.push({ t:"家 中", b: S.family<15
+      ? (S.flags.married ? "{配偶}提出了分居。你在客厅坐到天亮，第二天照常去上班。\n\n那天的会你走神了两次。"
+                         : "你已经很久没回过老家了。上次通电话是什么时候，你想不起来。")
+      : "家里最近气氛不对。你在办公室也静不下心。" , gray:true});
+  }
+  // 健康崩盘
+  if(S.health < 25 && !S.overtime){
+    S.notices.push({ t:"医 院", b:"医生说，你必须做个选择了。", gray:true });
+  }
+
+  S.yearEnd = rows;
+  S.phase = "settle";
+  render();
+}
+
+/* ---------- 晋升判定 ---------- */
+function ageCoef(target){
+  const p = PROMO[target]; if(!p) return 1;
+  const over = S.age - p.line;
+  let c = over<=0 ? 1 + Math.min(.1, -over*0.012) : 1 - over*0.06;
+  c += waveMods().ageCoefBonus;
+  return Math.max(0.35, Math.min(1.15, c));
+}
+
+function rivalTick(){
+  const R = S.rival;
+  if(R.rank>=8) return;
+  const need = PROMO[R.rank+1];
+  if(!need) return;
+  const yrs = S.year - 2026;
+  const expect = [0,4,8,13,19,26,34,43,53][R.rank+1] || 99;
+  if(yrs >= expect && chance(.42)) R.rank++;
+}
+
+function advanceYear(){
+  rivalTick();
+  S.year++; S.age++; S.yearsInRank++;
+
+  // 死亡判定
+  if(S.health <= 0){
+    if(!S.retired && S.age < S.retireAge){
+      S.sickLeave = true; S.retired = true; S.health = 20;
+      S.log.push([S.year, "因健康原因提前退出岗位"]);
+      S.notices = [{t:"病 退",b:"医生把片子挂上去看了很久，然后说：你不能再这样下去了。\n\n你签字的时候手很稳，签完才发现出了一身汗。"}];
+      return retireFlow();
+    }
+    S.diedInOffice = !S.retired;
+    return endGame();
+  }
+  let dp = S.age<50?0.0018 : S.age<60?0.006 : S.age<70?0.019 : S.age<80?0.05 : S.age<90?0.12 : 0.27;
+  dp *= 1 + Math.max(0,(70 - S.health)) / 42;   // 健康越差，风险成倍放大
+  if(S.health < 12) dp += 0.10;
+  if(chance(dp)){ S.diedInOffice = !S.retired && !S.overtime ? false : !S.retired; return endGame(); }
+
+  // 风险爆雷
+  const thr = 100 - waveMods().riskLower;
+  if(S.risk >= thr || (S.risk>=70 && chance((S.risk-70)/880))){
+    if(S.flags.tape && !S.flags.tapeUsed){          // 那份录音，用掉了
+      S.flags.tapeUsed = true; S.flags.tape = false;
+      S.risk = cl(S.risk - 30, 0, 140);
+      S.notices.push({ t:"惊 险", b:"谈话进行到第三个小时，你把那段录音放了出来。\n\n屋里安静了很久。\n\n后来这件事不了了之。你保住了自己，也彻底得罪了另一个人——而且你手里再没有第二份录音了。" });
+    } else { S.busted = true; return endGame(); }
+  }
+
+  // 退休/加时赛
+  if(!S.retired && !S.overtime){
+    if(S.rank >= 9){ S.overtime = true; S.notices.push({t:"加 时",b:"到了这个位置，退休年龄不再由制度决定，由你自己决定。\n\n从今往后，每一年都是你自己选的。"}); }
+    else if(S.age >= S.retireAge){ S.retired = true; return retireFlow(); }
+  }
+  if(S.overtime && S.age >= 66 && S.wantRetire){ S.retired = true; return retireFlow(); }
+
+  startYear();
+}
+
+/* ---------- 退休后 ---------- */
+function retireFlow(){
+  if(S.careerEnd == null) S.careerEnd = S.year;
+  if(!S.retiredBonus){ S.retiredBonus = true; S.health = cl(S.health + 10); }
+  S.phase = "retired";
+  S.log.push([S.year, "退休"]);
+  render();
+}
+function retireYear(){
+  S.year++; S.age++;
+  S.health = cl(S.health - (S.age<75?2.1:S.age<85?3.4:5.2));
+  S.family = cl(S.family + 2.4);
+  const rnet = SALARY[S.rank]*0.55 - 6;
+  S.money = Math.max(0, S.money + rnet);
+  S.legit = Math.max(0, (S.legit ?? 2) + rnet);
+  S.retireNote = null;
+  if(S.risk >= 50 && !S.flags.confessed && chance(0.02 + S.risk/2600)){ S.busted = true; return endGame(); }
+  if(S.health<=0 || chance(S.age<75?0.028:S.age<85?0.085:S.age<93?0.2:0.34)) return endGame();
+  const notes = [
+    "你开始每天早上六点半在小区里走两圈。有人在电梯里叫你老领导，你摆摆手。",
+    "孙子上小学了。你去接过两次，站在校门口，觉得比开会还紧张。",
+    "老同事组织了个群，一开始很热闹，后来一年也响不了几次。",
+    "你把办公室带回来的那个搪瓷缸洗干净了，摆在阳台上养多肉。",
+    "你偶尔还会梦见开会。醒了以后要愣一会儿才想起来自己已经退了。",
+    "有个当年的下属来看你，聊了两个小时。走的时候你送到楼下。",
+  ];
+  S.retireNote = pick(notes);
+  render();
+}
+
+/* ---------- 结局 ---------- */
+function endGame(){
+  S.dead = true;
+  if(S.careerEnd == null) S.careerEnd = S.year;
+  if(S.busted){
+    S.log.push([S.year, "接受组织审查，被开除公职"]);
+  } else if(S.sickLeave && S.careerEnd === S.year){
+    S.log.push([S.year, "逝世，享年 " + S.age + " 岁"]);
+  } else {
+    S.log.push([S.year, "逝世，享年 " + S.age + " 岁"]);
+  }
+  S.ending = ENDINGS.find(e=>e.test(S)) || ENDINGS[ENDINGS.length-1];   // 传完整状态，别再漏字段
+  S.phase = "end";
+  render();
+}
+
+/* ==================================================================
+   渲染
+   ================================================================== */
+function fmt(t){
+  if(t==null || !S) return t;
+  return String(t)
+    .replace(/\{配偶\}/g, "妻子")
+    .replace(/\{TA\}/g,   "她")
+    .replace(/\{子女\}/g, S.flags.childBoy ? "儿子" : "女儿")
+    .replace(/\{TA子\}/g, S.flags.childBoy ? "他" : "她")
+    .replace(/\{下一级\}/g, RANKS[Math.min(9, S.rank + 1)]);
+}
+
+const riskText = r =>
+  r<10 ? "心里踏实" : r<25 ? "偶尔会想起某些事" : r<45 ? "半夜有时候会醒" :
+  r<62 ? "听见走廊的脚步声会停一下" : r<80 ? "你知道那一天迟早会来" : "你已经开始整理东西了";
+
+function statBar(nm, v, key, color){
+  const d = S.deltas[key];
+  const pct = cl(v);
+  // 只有「生活线」低了才是危险；政绩/人脉低只是还没积累，开局本来就是 5，不该报红
+  const warn = (key === "health" || key === "family") && v < 25;
+  const dt = d && Math.abs(d)>=0.5
+    ? `<span class="dt ${(key==="risk" ? d<0 : d>0) ? 'up':'dn'}">${d>0?'+':''}${d.toFixed(0)}</span>` : "";
+  return `<div class="stat"><span class="nm${warn?' warn':''}">${nm}</span>
+    <span class="bar"><i class="b-${color}" style="width:${pct}%"></i></span>
+    <span class="vl${warn?' warn':''}">${Math.round(v)}${dt}</span></div>`;
+}
+
+function panelStats(){
+  const md = S.deltas.money;
+  const used = Object.values(S.alloc||{}).reduce((a,b)=>a+b,0);
+  const left = Math.max(0, (S.energyPool||0) - used);
+  const maxE = (S.energyPool||0);
+  let pips = "";
+  for(let i=0;i<maxE;i++) pips += `<i class="${i<left?'on':''}"></i>`;
+  return `<div class="card tight">
+    <div class="stats">
+      ${statBar("政　绩", S.merit, "merit", "merit")}
+      ${statBar("人　脉", S.network, "network", "net")}
+      ${statBar("身　体", S.health, "health", "hp")}
+      ${statBar("家　庭", S.family, "family", "fam")}
+      ${statBar("风　险", S.risk, "risk", "risk")}
+    </div>
+    <div class="enrow">
+      <span class="nm">本年精力</span>
+      <span class="epips">${pips}</span>
+      <span class="vl">${left} / ${maxE}</span>
+    </div>
+    <div class="moneyrow">
+      <span>存款 <b>${S.money.toFixed(1)}</b> 万${md&&Math.abs(md)>=.5?` <span class="dt ${md>0?'up':'dn'}">${md>0?'+':''}${md.toFixed(1)}</span>`:""}</span>
+      <span>能力 <b>${Math.round(S.ability)}</b><span class="ab">　工作产出 ×${(1+S.ability/200).toFixed(2)}</span></span>
+      <span class="risknote">${riskText(S.risk)}</span>
+    </div>
+  </div>`;
+}
+
+function traitEffText(t){
+  const e = t.eff, p = [];
+  if(e.workMul)  p.push(`工作产出 +${Math.round((e.workMul-1)*100)}%`);
+  if(e.relMul)   p.push(`关系产出 +${Math.round((e.relMul-1)*100)}%`);
+  if(e.netDecay) p.push(`人脉折旧 −${Math.round((1-e.netDecay)*100)}%`);
+  if(e.meritDecay) p.push(`政绩折旧 −${Math.round((1-e.meritDecay)*100)}%`);
+  if(e.promo)    p.push(`晋升评分 +${e.promo}`);
+  if(e.income)   p.push(`年收入 +${e.income} 万`);
+  if(e.famDecay) p.push(`家庭每年 ${e.famDecay>0?"+":""}${e.famDecay}`);
+  if(e.netYear)  p.push(`人脉每年 +${e.netYear}`);
+  if(e.riskYear) p.push(`风险每年 +${e.riskYear}`);
+  if(e.special)  p.push(e.special);
+  return p.join("　");
+}
+function toggleTraits(){ S.showTraits = !S.showTraits; render(); }
+
+function panelStatus(){
+  const tr = activeTraits();
+  const wv = S.waves.map(w=>(WAVES.find(x=>x.id===w.id)||{}).name).join(" · ");
+  const kid = S.flags.child ? ` · 有${S.flags.childBoy?"子":"女"}` : "";
+  const ms = S.flags.married ? "已婚" + kid
+           : (S.flags.divorced ? "离异" + kid : "未婚");
+  return `<div class="statusbar">
+    <span class="yr">${S.year}</span>
+    <span class="rk">${S.age} 岁 · ${RANKS[S.rank]} · ${ms}</span>
+    <span class="meta">
+      ${wv ? `<span class="wv">时局：${wv}</span>` : ""}
+      ${tr.length ? `<button class="tchip${S.showTraits?" on":""}" onclick="toggleTraits()">档案 <b>${tr.length}</b> ${S.showTraits?"▴":"▾"}</button>` : ""}
+    </span>
+  </div>
+  ${S.showTraits && tr.length ? `<div class="card tight tcard">
+    <div class="sec-title">档 案</div>
+    ${tr.map(t=>`<div class="ti"><span class="tn">${t.name}</span><span class="te">${traitEffText(t)}</span>
+      <div class="td">${t.desc}</div></div>`).join("")}
+  </div>` : ""}`;
+}
+
+function panelNotices(){
+  return S.notices.map(n=>`<div class="notice ${n.gray?'gray':''}"><div class="nt">${n.t}</div>${fmt(n.b)}</div>`).join("");
+}
+
+function effLine(D){
+  const NM = {merit:"政绩",network:"人脉",health:"身体",family:"家庭",money:"存款",risk:"风险"};
+  const out = [];
+  for(const k in D){
+    if(k==="risk") continue;
+    const v = D[k]; if(Math.abs(v)<0.5) continue;
+    const u = k==="money"?" 万":"";
+    out.push(`<span class="dt ${v>0?'up':'dn'}">${NM[k]} ${v>0?'+':''}${k==="money"?v.toFixed(1):v.toFixed(0)}${u}</span>`);
+  }
+  return out.length ? `<div class="eff">${out.join("")}</div>` : "";
+}
+
+let lastViewKey = null;
+function scrollTopIfNewView(key){
+  if(key === lastViewKey) return;     // 同一画面内的操作（如加减精力）不滚动
+  lastViewKey = key;
+  window.scrollTo({ top:0, behavior:"smooth" });
+}
+
+function render(){
+  const app = $("#app");
+  if(!S){ return renderTitle(); }
+
+  if(S.phase==="end") return renderEnd();
+  if(S.phase==="retired") return renderRetired();
+
+  let h = panelStatus() + panelStats() + panelNotices();
+
+  if(S.phase==="event"){
+    const e = S.curEv;
+    h += `<div class="card">
+      <span class="ev-tag">${e.tag||"事件"}</span>
+      <h2 class="ev-title">${fmt(e.title)}</h2>
+      <div class="ev-text">${fmt(typeof e.text==="function" ? e.text(S) : e.text)}</div>
+      <div class="opts">${(()=>{
+        const need = o => (o.eff && o.eff.money < 0) ? -o.eff.money : 0;
+        const noE  = o => !!(o.cost && o.cost > S.energyPool);
+        const noM  = o => need(o) > S.money;
+        const anyOK = e.opts.some(o => !noE(o) && !noM(o));   // 至少留一条路
+        return e.opts.map((o,i)=>{
+        const lackE = noE(o), lackM = anyOK && noM(o);
+        const dis = lackE || lackM;
+        const badge = lackM ? `<span class="oc no">需 ${need(o).toFixed(0)} 万 · 不足</span>`
+                    : o.cost ? `<span class="oc${lackE?" no":""}">精力 ${o.cost}${lackE?" · 不足":""}</span>`
+                    : need(o) ? `<span class="oc">支出 ${need(o).toFixed(0)} 万</span>` : "";
+        return `<button class="opt" ${dis?"disabled":""} onclick="chooseOpt(${i})">
+          <span class="ot">${fmt(o.t)}</span>${badge}
+        </button>`;
+        }).join("");
+      })()}</div>
+      <div class="redline" style="margin-top:12px">本年度剩余精力：${S.energyPool} 点</div>
+    </div>`;
+  }
+
+  else if(S.phase==="evresult"){
+    h += `<div class="card">
+      <span class="ev-tag">${S.curEv.tag||"事件"}</span>
+      <h2 class="ev-title">${fmt(S.curEv.title)}</h2>
+      <div class="result">${fmt(S.evResult)}</div>
+      ${effLine(S.evEff)}
+      ${(S.newTraits||[]).length ? `<div class="tgain">档案 · ${S.newTraits.join(" · ")}</div>` : ""}
+      <div class="btnrow"><button class="btn" onclick="nextEvent()">继　续</button></div>
+    </div>`;
+  }
+
+  else if(S.phase==="alloc"){
+    const used = Object.values(S.alloc).reduce((a,b)=>a+b,0);
+    const left = S.energyPool - used;
+    const row = (k,nm,sub)=>{
+      const v = S.alloc[k];
+      let pips = "";
+      for(let i=0;i<ALLOC_CAP;i++) pips += `<span class="pip ${i<v?'on':''}" onclick="setPip('${k}',${i+1})"></span>`;
+      return `<div class="arow">
+        <span class="lb">${nm}<small>${sub}</small></span>
+        <span class="pips">${pips}</span>
+        <span class="num">${v||""}</span>
+        <span class="actrl">
+          <button onclick="setAlloc('${k}',-1)" ${v<=0?"disabled":""}>−</button>
+          <button onclick="setAlloc('${k}',1)" ${(left<=0||v>=ALLOC_CAP)?"disabled":""}>+</button>
+        </span></div>`;
+    };
+    h += `<div class="card">
+      <div class="sec-title">年 度 精 力 分 配</div>
+      <div class="enhead">
+        <span class="left">${S.age} 岁，你今年能拿出的精力</span>
+        <span class="pts">剩余 <b>${left}</b> / ${S.energyPool}</span>
+      </div>
+      <div class="alloc">
+        ${row("work","工　作","政绩↑ 身体↓ 家庭↓")}
+        ${row("rel","关　系","人脉↑ 存款↓ 家庭↓")}
+        ${row("fam","家　庭","家庭↑")}
+        ${row("hp","健　康","身体↑")}
+        ${row("study","学　习",`能力↑　${studyEffText()}`)}
+      </div>
+      <div class="allocnote">单项最多投入 ${ALLOC_CAP} 点 —— 你没法什么都要。<br>
+        「学习」积累的能力永久有效、没有上限，但<b>越老学得越慢</b>。</div>
+      <div class="btnrow">
+        <button class="btn" onclick="confirmAlloc()">确　认</button>
+      </div>
+    </div>`;
+  }
+
+  else if(S.phase==="settle"){
+    h += `<div class="card">
+      <div class="sec-title">${S.year} 年 度 结 算</div>
+      <div class="ledger">${S.yearEnd.map(r=>`<div><span class="k">${r[0]}</span><span class="v">${r[1]}</span></div>`).join("")}</div>
+      ${effLine(S.deltas)}
+      <div class="btnrow"><button class="btn" onclick="afterSettle()">年终考核 →</button></div>
+    </div>`;
+  }
+
+  else if(S.phase==="promo"){
+    const p = S.promoMsg;
+    h += `<div class="card">
+      <div class="sec-title">干 部 任 免</div>
+      ${p ? `<div class="notice ${p.fail?'gray':''}"><div class="nt">${p.fail?"公　示":"任　命"}</div>${fmt(p.txt)}</div>`
+          : `<div class="notice gray"><div class="nt">年　末</div>今年没有你的事。\n\n日历翻过去了。</div>`}
+      ${S.overtime ? `<div class="btnrow">
+          <button class="btn" onclick="nextYear()">继续干下去</button>
+          <button class="btn ghost" onclick="askRetire()">申请退休</button>
+        </div>` : `<div class="btnrow"><button class="btn" onclick="nextYear()">${S.year+1} 年 →</button></div>`}
+    </div>`;
+  }
+
+  app.innerHTML = h + saveBar();
+  scrollTopIfNewView(`${S.phase}|${S.year}|${S.evIdx}`);
+}
+
+function saveBar(){
+  return `<div class="btnrow center" style="justify-content:center;margin-top:20px">
+    <button class="btn ghost" onclick="if(confirm('确定重新开始？'))renderTitle()">重　开</button>
+  </div>`;
+}
+
+function renderTitle(){
+  S = null; lastViewKey = null;
+  $("#app").innerHTML = `
+  <div class="card">
+    <div class="ev-text" style="font-family:var(--display);font-size:16px;line-height:2.1">
+2026 年 7 月，你 22 岁，大学毕业，考公上岸。
+
+报到通知上写着：云江省临川市青阳县，市场监管局，一级科员。
+
+你从县城汽车站出来，拖着一个行李箱。太阳很大。你想，这只是个起点。
+
+——从这一年起，到你退休、或者到你走不动为止，每一年，你都要做一次选择。
+    </div>
+    <div class="btnrow" style="margin-top:22px">
+      <button class="btn" onclick="newGame('male')">开　始</button>
+    </div>
+  </div>
+`;
+}
+
+function renderRetired(){
+  const h = `${panelStatus()}${panelStats()}
+  <div class="card">
+    <div class="sec-title">退 休 生 活</div>
+    <div class="ev-text">${fmt(S.retireNote) || "你办完了手续。走出大院那天阳光很好。\n\n门卫跟你说了句「领导慢走」，这是最后一次有人这么叫你。"}</div>
+    <div class="btnrow"><button class="btn" onclick="retireYear()">又一年 →</button></div>
+  </div>`;
+  $("#app").innerHTML = h + saveBar();
+  scrollTopIfNewView(`retired|${S.year}`);
+}
+
+function renderEnd(){
+  const e = S.ending;
+  const yrs = S.year - 2026;
+  $("#app").innerHTML = `
+  <div class="card ending">
+    <div class="seal">${e.seal}</div>
+    <div class="etext">${fmt(typeof e.text==="function" ? e.text(S) : e.text)}</div>
+    <div class="epi">
+      <div><span class="k">生卒</span><span>2004 — ${S.year}（${S.age} 岁）</span></div>
+      <div><span class="k">最高职级</span><span>${RANKS[S.rank]}</span></div>
+      <div><span class="k">从政年数</span><span>${(S.careerEnd||S.year) - 2026} 年</span></div>
+      <div><span class="k">身后存款</span><span>${S.money.toFixed(1)} 万</span></div>
+      <div><span class="k">家庭</span><span>${S.family>=60?"和睦":S.family>=35?"平淡":S.family>=15?"疏远":"破碎"}</span></div>
+      <div><span class="k">风评</span><span>${S.risk<12?"清白":S.risk<35?"没什么话说":S.risk<70?"有些传闻":"一言难尽"}</span></div>
+    </div>
+    ${activeTraits().length?`<div class="epi"><div class="sec-title" style="margin-bottom:8px">档 案</div>
+      <div class="tpanel" style="margin:0;padding:0;border:0">${activeTraits().map(t=>`
+        <div class="ti"><span class="tn">${t.name}</span><span class="te">${t.from}</span>
+        <div class="td">${t.desc}</div></div>`).join("")}</div></div>`:""}
+    ${S.log.length?`<div class="epi"><div class="sec-title" style="margin-bottom:8px">履 历</div>
+      <div class="timeline">${S.log.map(l=>`<div><span class="ty">${l[0]}</span><span>${l[1]}</span></div>`).join("")}</div></div>`:""}
+    <div class="btnrow" style="justify-content:center;margin-top:24px">
+      <button class="btn" onclick="renderTitle()">重 新 开 始</button>
+    </div>
+  </div>`;
+  scrollTopIfNewView("end");
+}
+
+/* ---------- 流程按钮 ---------- */
+function afterSettle(){ S.phase="promo"; doPromotionWrap(); }
+function doPromotionWrap(){ doPromotionPending(); }
+function doPromotionPending(){
+  // 先算晋升，再显示，再由玩家点进入下一年
+  const t = S.rank+1;
+  S.promoMsg = null;
+  evaluatePromotion();
+  S.phase = "promo";
+  render();
+}
+function evaluatePromotion(){
+  const t = S.rank + 1;
+  if(t > 10) return;
+  const p = PROMO[t], m = waveMods();
+  if(S.yearsInRank < p.years) return;
+  if(t === 9){
+    const fails = [];
+    if(!S.flags.zhengbuInTime) fails.push("组织上综合考虑，认为年龄结构不合适。");
+    if(S.risk >= (S.flags.recused ? 32 : 20)) fails.push("考察期间，有人反映了一些情况。");
+    if(S.ability < 55) fails.push("同志们认为在专业素养上还需要再沉淀。");
+    if(!(S.flags.bigwin || S.flags.crisis)) fails.push("履历很完整，但缺一件真正扛过事的经历。");
+    if(S.network < 62) fails.push("推荐环节，票数不够。");
+    if(S.health < 45) fails.push("体检结论，不予通过。");
+    if(fails.length){
+      if(chance(.5)) S.promoMsg = { fail:true, txt:"考察组来了，谈了三天，然后走了。\n\n很久以后你才辗转听到一句评价：\n\n「"+pick(fails)+"」" };
+      return;
+    }
+  }
+  // 一人之下：副国级之上，门槛比副国级再狠一档
+  if(t === 10){
+    const f2 = [];
+    if(S.risk >= 6)      f2.push("到了这个高度，任何一点旧事都是不可承受的。");
+    if(S.merit < 92)     f2.push("同志们认为，还缺少足以服众的分量。");
+    if(S.network < 92)   f2.push("推荐环节，差了几票。");
+    if(S.health < 50)    f2.push("体检结论，不予通过。");
+    if(!(S.flags.bigwin && S.flags.crisis)) f2.push("履历很完整，但少了一次真正把天捅破又补上的经历。");
+    if(f2.length){
+      if(chance(.4)) S.promoMsg = { fail:true, txt:"有一份名单，你的名字在上面停了很久，最后还是划掉了。\n\n很久以后你才辗转听到一句：\n\n「" + pick(f2) + "」" };
+      return;
+    }
+  }
+
+  const wait = Math.max(0, S.yearsInRank - p.years);
+  const slotP = Math.min(0.85, p.slot * m.slotMul * (1 + 0.12*wait));
+  if(!chance(slotP)){
+    if(chance(.35)) S.promoMsg = { fail:true, txt:`今年${RANKS[t]}的位置没有空出来。\n\n没有人正式告诉你这件事，你是从别人的语气里知道的。` };
+    return;
+  }
+  const score = (S.merit*0.45 + S.network*0.35 + rnd(0,100)*0.20) * ageCoef(t) + tSum("promo");
+  if(score >= p.need){
+    if(t === 10){                       // 登顶即终局，不再继续游戏
+      S.rank = 10; S.topped = true;
+      S.log.push([S.year, "任正国级职务"]);
+      return endGame();
+    }
+    S.rank = t; S.yearsInRank = 0; S.merit *= 0.74;
+    if(t===8) S.flags.zhengbuInTime = true;   // 硬门槛已由冲顶链承担，此处不再卡年龄
+    S.log.push([S.year, "晋升为 " + RANKS[t]]);
+    const base = RETIRE_AGE(t), plus = S.retireAge>65 ? S.retireAge-65 : 0;
+    if(base!==999) S.retireAge = base + plus;
+    S.promoMsg = { fail:false, txt: t===9
+      ? "任命通知下来那天，办公室里很安静。\n\n你走到窗前，看见楼下一个年轻人抱着一摞材料快步走过。\n\n那摞材料大概有二十七公分高。\n\n【已达副国级 · 从此退休时间由你自己决定】"
+      : `任前公示挂出来了，你的名字在第一个。\n\n【晋升为 ${RANKS[t]}】` };
+  } else {
+    const who = `同年入职的${S.rival.name}（现${RANKS[S.rival.rank]}）`;
+    S.promoMsg = { fail:true, txt:`名单公布了。\n\n本次提拔的是${who}。\n\n你把文件从头到尾看了两遍。` };
+  }
+}
+function nextYear(){ advanceYear(); }
+function askRetire(){
+  if(!confirm("确定申请退休？这一局就结束了。")) return;
+  S.retired = true; retireFlow();
+}
+function setPip(k, n){
+  const other = Object.keys(S.alloc).reduce((a,x)=>a+(x===k?0:S.alloc[x]),0);
+  const max = Math.min(ALLOC_CAP, S.energyPool - other);
+  S.alloc[k] = Math.max(0, Math.min(n===S.alloc[k] ? n-1 : n, max));
+  render();
+}
+
+/* ---------- 启动 ---------- */
+renderTitle();
+</script>
+</body>
+</html>
