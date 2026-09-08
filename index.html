@@ -227,6 +227,16 @@ header.doc{padding:26px 0 0; text-align:center}
 }
 .btn.ghost{background:transparent; color:var(--ink2); -webkit-text-fill-color:var(--ink2); border:1px solid var(--line); letter-spacing:2px; font-size:13px; padding:8px 18px}
 .btnrow{display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin-top:16px}
+.toast{
+  position:fixed; left:50%; top:14px; transform:translateX(-50%);
+  background:var(--red); color:#fff; -webkit-text-fill-color:#fff;
+  font-family:var(--display); font-size:12.5px; letter-spacing:1.5px;
+  padding:8px 18px; border-radius:2px; z-index:99; white-space:nowrap;
+  box-shadow:0 2px 10px rgba(0,0,0,.18); opacity:1; transition:opacity .45s;
+  padding-top:calc(8px + env(safe-area-inset-top,0px));
+}
+.toast.out{opacity:0}
+@media (prefers-reduced-motion:reduce){ .toast{transition:none} }
 /* ============ 交互态 ============
    iOS Safari 点完之后会把 :hover 留在元素上，而 render() 是整段替换 innerHTML，
    新按钮正好落在手指底下就继承了高亮。所以 hover 只给真正有鼠标的设备，
@@ -3472,6 +3482,7 @@ function advanceYear(){
   }
   let dp = S.age<50?0.0018 : S.age<60?0.006 : S.age<70?0.019 : S.age<80?0.05 : S.age<90?0.12 : 0.27;
   dp *= 1 + Math.max(0,(70 - S.health)) / 42;   // 健康越差，风险成倍放大
+  dp *= Math.max(0.22, 1 - Math.max(0, S.health - 68) * 0.026);  // 健康越好，越不容易出事
   if(S.health < 12) dp += 0.10;
   if(chance(dp)){ S.diedInOffice = !S.retired; return endGame(); }   // 没退休就死了，就是死在任上
 
@@ -3512,7 +3523,10 @@ function retireYear(){
   S.legit = Math.max(0, (S.legit ?? 2) + rnet);
   S.retireNote = null;
   if(S.risk >= 50 && !S.flags.confessed && chance(0.02 + S.risk/2600)){ S.busted = true; return endGame(); }
-  if(S.health<=0 || chance(S.age<75?0.028:S.age<85?0.085:S.age<93?0.2:0.34)) return endGame();
+  let rdp = S.age<75?0.028 : S.age<85?0.085 : S.age<93?0.2 : 0.34;
+  rdp *= 1 + Math.max(0,(70 - S.health)) / 42;
+  rdp *= Math.max(0.22, 1 - Math.max(0, S.health - 68) * 0.026);
+  if(S.health<=0 || chance(rdp)) return endGame();
   const notes = [
     "你开始每天早上六点半在小区里走两圈。有人在电梯里叫你老领导，你摆摆手。",
     "孙子上小学了。你去接过两次，站在校门口，觉得比开会还紧张。",
@@ -3703,6 +3717,7 @@ function scrollTopIfNewView(key){
 function render(){
   const app = $("#app");
   if(!S){ return renderTitle(); }
+  saveProgress();                       // 放在提前 return 之前，结局页/退休页也要能续上
 
   if(S.phase==="end") return renderEnd();
   if(S.phase==="retired") return renderRetired();
@@ -3814,7 +3829,7 @@ function render(){
 
 function saveBar(){
   return `<div class="btnrow center" style="justify-content:center;margin-top:20px">
-    <button class="btn ghost" onclick="if(confirm('确定重新开始？'))renderTitle()">重　开</button>
+    <button class="btn ghost" onclick="if(confirm('确定重新开始？这一局的进度会清掉。')){clearProgress();renderTitle();}">重　开</button>
   </div>`;
 }
 
@@ -3995,8 +4010,73 @@ function setPip(k, n){
   render();
 }
 
+/* ---------- 断点续玩 ----------
+   不是存档系统，是防手滑：每渲染一次就把状态写进 localStorage，
+   刷新 / 误关标签页 / 手机切后台被回收，回来还在原地。
+   超过 12 小时自动作废，重开会清掉。
+   事件和结局是带函数的对象，不能直接序列化，存 id、读回来再挂上。
+------------------------------------------------ */
+const SAVE_KEY = "tiefanwan.progress.v1";
+const SAVE_TTL = 12 * 60 * 60 * 1000;
+
+function saveProgress(){
+  if(!S) return;
+  try{
+    const d = Object.assign({}, S);
+    d.queue = (S.queue || []).map(e => e && e.id).filter(Boolean);
+    d.curEv = S.curEv ? S.curEv.id : null;
+    d.ending = S.ending ? S.ending.id : null;
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ v:1, t:Date.now(), s:d }));
+  }catch(e){ /* 无痕模式 / 存储被禁，静默放弃 */ }
+}
+
+function loadProgress(){
+  try{
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(!raw) return null;
+    const box = JSON.parse(raw);
+    if(!box || box.v !== 1 || !box.s) return null;
+    const age = Date.now() - (box.t || 0);
+    if(age > SAVE_TTL){ clearProgress(); return null; }
+    const d = box.s;
+    d.queue  = (d.queue || []).map(id => EVENTS.find(e => e.id === id)).filter(Boolean);
+    d.curEv  = d.curEv  ? (EVENTS.find(e => e.id === d.curEv) || null) : null;
+    d.ending = d.ending ? (ENDINGS.find(e => e.id === d.ending) || null) : null;
+    if(d.curEv == null && d.phase === "event") return null;   // 存档不完整，宁可从头
+    d.circle = d.circle || { in:false, name:null, depth:0, since:0, doomed:false, fell:false, fallAt:99 };
+    d._resumedAge = age;
+    return d;
+  }catch(e){ return null; }
+}
+
+function clearProgress(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+
+function resumeOrTitle(){
+  const d = loadProgress();
+  if(!d){ return renderTitle(); }
+  S = d;
+  const mins = Math.round(d._resumedAge / 60000);
+  const when = mins < 1 ? "刚才" : mins < 60 ? mins + " 分钟前" : Math.round(mins/60) + " 小时前";
+  delete S._resumedAge;
+  lastViewKey = null;
+  render();
+  toast("已回到" + when + "离开的地方");
+}
+
+/* 顶部短暂提示，两秒后自己消失 */
+function toast(msg){
+  try{
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.textContent = msg;
+    document.body.appendChild(el);
+    setTimeout(()=>{ el.classList.add("out"); }, 2200);
+    setTimeout(()=>{ el.remove(); }, 2700);
+  }catch(e){}
+}
+
 /* ---------- 启动 ---------- */
-renderTitle();
+resumeOrTitle();
 </script>
 </body>
 </html>
