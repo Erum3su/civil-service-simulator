@@ -16,16 +16,16 @@
 /* ============ 基础 ============ */
 :root{
   color-scheme: light;
-  --paper:#e9e3d6;
-  --card:#fbf8f1;
-  --card2:#f3eee2;
+  --paper:#e3dfd4;
+  --card:#f5f2e8;
+  --card2:#ebe7da;
   --ink:#26221c;
-  --ink2:#5c5548;
-  --ink3:#8d8474;
+  --ink2:#585245;
+  --ink3:#8a8171;
   --red:#9c2b23;
   --red2:#c0392b;
-  --line:#c9bfa8;
-  --line2:#ddd4bf;
+  --line:#c4bba4;
+  --line2:#d6ccb6;
   --good:#3d6b45;
   --bad:#9c2b23;
   --c-merit:#35617f;
@@ -60,103 +60,146 @@ body{
   font-size:15px; line-height:1.75;
   -webkit-font-smoothing:antialiased;
 }
-/* ============ 左上角的光 ============
-   两层，各干各的：
-   .sun  在纸面之下 —— 光打在没有被卡片盖住的背景上。
-   .sun2 在卡片之上 —— 关键的一层。卡片本身已接近纯白，再叠白光是看不出来的，
-         所以这一层真正做的是「把光照不到的地方压暗」，中间留一条亮带，
-         靠明暗差把光柱读出来。整体幅度压在 8% 以内，正文不会发灰。
+/* ============ 午后的窗影 ============
+   目标是实拍那种质感：午后的太阳斜穿窗框，落在这张档案纸上——
+   少、宽、斜的几道影子，暖色的亮面，半影短而干净。
 
-   三条实现约束（都踩过）：
-   1) 必须放在 #app 外面 —— render() 每一步都重写 #app，放里面动画会被反复重启。
-   2) 不用 filter:blur() —— 大面积 fixed 元素上动画 blur 在 iOS 上会掉帧，
-      边缘柔化全部交给多段渐变。
-   3) 不用「超大元素 + rotate」画斜光柱 —— 那样合成层能到视口的七八倍，
-      旧手机上是实打实的显存。这里改成视口大小的元素 + 带角度的渐变（80deg），
-      倾斜由渐变本身完成，合成层就是一屏。 */
+   为什么效果几乎全靠「暗」：
+   卡片底色接近纯白，往上叠白光是叠不出东西的。真实照片也一样，
+   被照亮处并不比纸更白，是没照到的地方更暗。所以亮面只给一点暖色，
+   识别度全部交给阴影带 —— 压暗不伤正文对比度，提亮才会。
+   （配套地，全局配色也压深了一档，给光留出提亮空间。）
+
+   —— 性能上绕开的三个坑 ——
+   1) 不用 skew/rotate 把一个巨大的元素拧成平行四边形。
+      斜度直接写进渐变角度（60deg / 8deg），元素就是一屏大小。
+      之前那版 150vw×150vh 的斜切层，实测掉到 18fps。
+   2) 不用 filter:blur()。半影完全由渐变的过渡段做出来，一分钱不花。
+   3) 不用 mask。影子本来就该铺满整个画面，参考图里也是这样。
+   动画只动 transform / opacity，纯合成，主线程不参与。
+
+   另外：必须放在 #app 外面 —— render() 每一步都重写 #app，
+   放里面动画会被反复重启。 */
 .sun, .sun2{
-  /* 用长写而不是 inset：iOS 14 及更早不认 inset，会让整层塌掉 */
-  position:fixed; top:-6vh; bottom:-6vh; left:-14vw; right:-14vw;   /* 漂移余量，别露边 */
-  overflow:hidden;                     /* contain 不被支持时的兜底，防止横向溢出 */
-  pointer-events:none; contain:strict;
-  will-change:transform,opacity;
+  position:fixed; top:-8vh; bottom:-8vh; left:-12vw; right:-12vw;   /* 漂移余量 */
+  overflow:hidden; pointer-events:none; contain:strict;
 }
-.sun{
-  z-index:0;
-  background:
-    radial-gradient(46vw 34vh at 12% 2%,
-      rgba(255,253,243,.70), rgba(255,250,230,.22) 45%, rgba(255,248,226,0) 72%),
-    linear-gradient(80deg,
-      rgba(255,248,224,0)   16%,
-      rgba(255,250,229,.30) 26%,
-      rgba(255,253,242,.80) 37%,
-      rgba(255,251,235,.44) 47%,
-      rgba(255,248,224,.10) 58%,
-      rgba(255,248,224,0)   68%);
-  animation:sunDrift 38s ease-in-out infinite;
-}
-.sun2{
-  z-index:5;
-  background:linear-gradient(80deg,
-    rgba(56,44,22,.085)   0%,
-    rgba(56,44,22,.072)  17%,
-    rgba(56,44,22,.016)  27%,
-    rgba(255,252,240,.055) 31%,
-    rgba(255,253,247,.125) 37%,
-    rgba(255,252,238,.055) 43%,
-    rgba(56,44,22,.016)  47%,
-    rgba(56,44,22,.062)  60%,
-    rgba(56,44,22,.090) 100%);
-  animation:sunDrift 38s ease-in-out infinite;
-}
-/* 窗棂分出来的第二道细光，单独一层、单独的节奏 */
-.sun2 b{
-  position:absolute; top:0; right:0; bottom:0; left:0; display:block;
-  background:linear-gradient(80deg,
-    rgba(255,252,236,0)    41%,
-    rgba(255,254,247,.075) 47%,
-    rgba(255,252,236,0)    53%);
-  will-change:transform,opacity;
-  animation:sunDrift2 53s ease-in-out infinite;
-}
-/* 浮尘：在最上层飘，才看得见 */
-.sun2 i{
-  position:absolute; width:3px; height:3px; border-radius:50%;
-  background:radial-gradient(circle, rgba(255,254,244,.95), rgba(255,246,214,0) 70%);
-  opacity:0; will-change:transform,opacity;
-  animation:sunMote linear infinite;
-}
-.sun2 i:nth-of-type(1) {left: 6vw; top:46vh; animation-duration:34s; animation-delay:-3s}
-.sun2 i:nth-of-type(2) {left:16vw; top:60vh; animation-duration:47s; animation-delay:-19s}
-.sun2 i:nth-of-type(3) {left:26vw; top:38vh; animation-duration:29s; animation-delay:-11s}
-.sun2 i:nth-of-type(4) {left:36vw; top:56vh; animation-duration:52s; animation-delay:-31s; width:2px; height:2px}
-.sun2 i:nth-of-type(5) {left: 3vw; top:28vh; animation-duration:41s; animation-delay:-25s; width:2px; height:2px}
-.sun2 i:nth-of-type(6) {left:21vw; top:74vh; animation-duration:37s; animation-delay:-7s}
-.sun2 i:nth-of-type(7) {left:31vw; top:22vh; animation-duration:44s; animation-delay:-36s; width:2px; height:2px}
-.sun2 i:nth-of-type(8) {left:11vw; top:86vh; animation-duration:31s; animation-delay:-14s}
-.sun2 i:nth-of-type(9) {left:44vw; top:66vh; animation-duration:49s; animation-delay:-42s; width:4px; height:4px}
-.sun2 i:nth-of-type(10){left:28vw; top:11vh; animation-duration:36s; animation-delay:-21s; width:2px; height:2px}
-.sun2 i:nth-of-type(11){left: 1vw; top:66vh; animation-duration:43s; animation-delay:-5s}
-.sun2 i:nth-of-type(12){left:47vw; top:42vh; animation-duration:39s; animation-delay:-28s; width:2px; height:2px}
+.sun{ z-index:0 }
+.sun2{ z-index:5 }
 
-/* 一轮 38 秒：像云过、像窗帘轻轻动了一下 */
-@keyframes sunDrift{
-  0%,100%{ transform:translate3d(0,0,0);     opacity:.66 }
-  50%    { transform:translate3d(2.6vw,0,0); opacity:1 }
+/* 下层：窗户那个方向的一片暖光，打在没被卡片盖住的背景纸上 */
+.sun > u{
+  position:absolute; display:block; top:-6vh; left:-8vw; width:86vw; height:88vh;
+  background:radial-gradient(closest-side ellipse,
+    rgba(255,242,210,.9), rgba(255,238,202,.36) 48%, rgba(255,236,198,0) 78%);
+  animation:winBreath 84s ease-in-out infinite;
 }
-@keyframes sunDrift2{
-  0%,100%{ transform:translate3d(0,0,0);     opacity:.30 }
-  46%    { transform:translate3d(3.4vw,0,0); opacity:.92 }
+
+/* 上层 · 屋里的明暗底子：左上进光，右下沉下去 */
+.sun2 > s{
+  position:absolute; display:block; top:0; right:0; bottom:0; left:0;
+  background:linear-gradient(116deg,
+    rgba(58,40,14,0)    0%,
+    rgba(58,40,14,.014) 38%,
+    rgba(58,40,14,.04) 72%,
+    rgba(58,40,14,.072) 100%);
 }
-@keyframes sunMote{
-  0%  { transform:translate3d(0,0,0);       opacity:0 }
-  14% { opacity:.5 }
-  82% { opacity:.24 }
-  100%{ transform:translate3d(7vw,-26vh,0); opacity:0 }
+
+/* 上层 · 窗影本体
+   60deg  → 竖窗框的影子，约 30° 斜切，向右下倒（光从左上来）
+   8deg   → 横窗框的影子，接近水平、略微右低
+   两道渐变的过渡段就是半影，所以不需要 blur */
+.sun2 > o{
+  position:absolute; display:block; top:0; right:0; bottom:0; left:0;
+  background:
+    repeating-linear-gradient(60deg,
+      rgba(58,40,14,.125) 0%,
+      rgba(58,40,14,.125) 8%,
+      rgba(58,40,14,.076) 11.5%,
+      rgba(58,40,14,.022) 15%,
+      rgba(58,40,14,0)    18%,
+      rgba(58,40,14,0)    43%,
+      rgba(58,40,14,.022) 46%,
+      rgba(58,40,14,.076) 49.5%,
+      rgba(58,40,14,.125) 53%),
+    repeating-linear-gradient(8deg,
+      rgba(58,40,14,.085) 0%,
+      rgba(58,40,14,.085) 6%,
+      rgba(58,40,14,.042) 9%,
+      rgba(58,40,14,0)    12.5%,
+      rgba(58,40,14,0)    62%,
+      rgba(58,40,14,.042) 66%,
+      rgba(58,40,14,.085) 69%,
+      rgba(58,40,14,.085) 75%),
+    /* 丁达尔：亮束落在窗格中间，跟上面的影子周期对齐 */
+    repeating-linear-gradient(60deg,
+      rgba(255,246,218,0)   18%,
+      rgba(255,248,224,.038) 24%,
+      rgba(255,250,230,.058) 30.5%,
+      rgba(255,248,224,.038) 37%,
+      rgba(255,246,218,0)   43%,
+      rgba(255,246,218,0)   53%),
+    /* 窗光本身：午后偏暖 */
+    linear-gradient(116deg,
+      rgba(255,238,198,.13) 0%,
+      rgba(255,236,194,.11) 44%,
+      rgba(255,234,190,.075) 74%,
+      rgba(255,233,188,.045) 100%);
+  /* 相位：把亮格挪到左上角——光是从那儿进来的 */
+  background-position:26% 0, 0 -24%, 26% 0, 0 0;
+  will-change:transform,opacity;
+  animation:winMove 96s ease-in-out infinite;
 }
-/* 关掉动效时保留静态的光，只是不动 */
+
+/* 灰尘：沿着光束走，不是乱飘。真实的灰尘转个面就看不见了，所以亮度是忽明忽暗的 */
+.sun2 i{
+  position:absolute; border-radius:50%;
+  background:radial-gradient(circle,
+    rgba(255,253,242,1) 0%, rgba(255,248,222,.7) 36%, rgba(255,242,204,0) 74%);
+  opacity:0;
+  animation-name:winMote; animation-timing-function:linear; animation-iteration-count:infinite;
+}
+.sun2 i:nth-of-type(1){left:24.5vw; top:19.1vh; width:4px; height:4px; --o:0.7; --dx:6.7vw; --dy:-27.2vh; animation-duration:29.6s; animation-delay:-53.0s}
+.sun2 i:nth-of-type(2){left:40.1vw; top:74.1vh; width:6px; height:6px; --o:0.88; --dx:10.9vw; --dy:-31.6vh; animation-duration:46.5s; animation-delay:-48.7s}
+.sun2 i:nth-of-type(3){left:19.5vw; top:21.8vh; width:3px; height:3px; --o:0.8; --dx:4.2vw; --dy:-29.6vh; animation-duration:47.5s; animation-delay:-33.9s}
+.sun2 i:nth-of-type(4){left:61.3vw; top:17.6vh; width:4px; height:4px; --o:0.7; --dx:4.1vw; --dy:-15.8vh; animation-duration:48.7s; animation-delay:-42.5s}
+.sun2 i:nth-of-type(5){left:5.5vw; top:86.1vh; width:4px; height:4px; --o:0.73; --dx:8.3vw; --dy:-17.3vh; animation-duration:30.0s; animation-delay:-15.5s}
+.sun2 i:nth-of-type(6){left:65.0vw; top:80.7vh; width:3px; height:3px; --o:0.63; --dx:8.6vw; --dy:-22.9vh; animation-duration:34.2s; animation-delay:-8.5s}
+.sun2 i:nth-of-type(7){left:25.6vw; top:-1.8vh; width:5px; height:5px; --o:0.64; --dx:9.2vw; --dy:-23.7vh; animation-duration:28.6s; animation-delay:-26.6s}
+.sun2 i:nth-of-type(8){left:64.4vw; top:61.5vh; width:3px; height:3px; --o:0.77; --dx:9.0vw; --dy:-26.3vh; animation-duration:34.9s; animation-delay:-8.1s}
+.sun2 i:nth-of-type(9){left:62.1vw; top:79.9vh; width:5px; height:5px; --o:0.74; --dx:9.2vw; --dy:-25.0vh; animation-duration:57.5s; animation-delay:-40.9s}
+.sun2 i:nth-of-type(10){left:27.5vw; top:80.8vh; width:5px; height:5px; --o:0.61; --dx:7.2vw; --dy:-27.0vh; animation-duration:56.7s; animation-delay:-14.0s}
+.sun2 i:nth-of-type(11){left:57.1vw; top:4.3vh; width:4px; height:4px; --o:0.57; --dx:10.3vw; --dy:-19.9vh; animation-duration:46.7s; animation-delay:-31.4s}
+.sun2 i:nth-of-type(12){left:68.0vw; top:34.0vh; width:3px; height:3px; --o:0.55; --dx:5.1vw; --dy:-14.6vh; animation-duration:54.1s; animation-delay:-43.6s}
+.sun2 i:nth-of-type(13){left:8.5vw; top:62.7vh; width:4px; height:4px; --o:0.67; --dx:4.9vw; --dy:-20.9vh; animation-duration:26.2s; animation-delay:-13.8s}
+.sun2 i:nth-of-type(14){left:51.7vw; top:78.3vh; width:4px; height:4px; --o:0.7; --dx:7.5vw; --dy:-31.5vh; animation-duration:39.2s; animation-delay:-42.9s}
+.sun2 i:nth-of-type(15){left:65.5vw; top:78.2vh; width:4px; height:4px; --o:0.74; --dx:7.6vw; --dy:-25.7vh; animation-duration:25.0s; animation-delay:-34.2s}
+.sun2 i:nth-of-type(16){left:8.2vw; top:68.8vh; width:5px; height:5px; --o:0.55; --dx:6.8vw; --dy:-30.8vh; animation-duration:50.6s; animation-delay:-4.2s}
+.sun2 i:nth-of-type(17){left:70.4vw; top:24.4vh; width:4px; height:4px; --o:0.82; --dx:10.1vw; --dy:-19.0vh; animation-duration:32.8s; animation-delay:-22.0s}
+.sun2 i:nth-of-type(18){left:41.0vw; top:26.3vh; width:4px; height:4px; --o:0.49; --dx:7.3vw; --dy:-21.9vh; animation-duration:51.1s; animation-delay:-40.1s}
+
+/* 太阳在动：96 秒一个来回，慢到你不会盯着它看，
+   但去泡杯水回来，影子已经不在原来的位置了 */
+@keyframes winMove{
+  0%,100%{ transform:translate3d(0,0,0);        opacity:.9 }
+  50%    { transform:translate3d(3.2vw,2.4vh,0); opacity:1 }
+}
+@keyframes winBreath{
+  0%,100%{ opacity:.72 }
+  50%    { opacity:1 }
+}
+@keyframes winMote{
+  0%  { transform:translate3d(0,0,0); opacity:0 }
+  12% { opacity:var(--o,.6) }
+  38% { opacity:calc(var(--o,.6) * .3) }
+  61% { opacity:var(--o,.6) }
+  84% { opacity:calc(var(--o,.6) * .25) }
+  100%{ transform:translate3d(var(--dx,7vw), var(--dy,-24vh), 0); opacity:0 }
+}
+/* 关掉动效时保留窗影，只是不动 */
 @media (prefers-reduced-motion:reduce){
-  .sun, .sun2, .sun2 b{ animation:none; transform:translate3d(1.3vw,0,0); opacity:.85 }
+  .sun > u, .sun2 > o{ animation:none }
+  .sun2 > o{ transform:translate3d(1.6vw,1.2vh,0) }
   .sun2 i{ display:none }
 }
 
@@ -482,7 +525,7 @@ button:focus-visible{outline:2px solid var(--red); outline-offset:2px}
 @media (prefers-color-scheme: dark){
   :root{
     color-scheme: light;
-    --paper:#e9e3d6; --card:#fbf8f1; --card2:#f3eee2;
+    --paper:#e3dfd4; --card:#fbf8f1; --card2:#f3eee2;
     --ink:#26221c; --ink2:#5c5548; --ink3:#8d8474;
     --red:#9c2b23; --red2:#c0392b; --line:#c9bfa8; --line2:#ddd4bf;
     --good:#3d6b45; --bad:#9c2b23;
@@ -503,8 +546,8 @@ button:focus-visible{outline:2px solid var(--red); outline-offset:2px}
 </style>
 </head>
 <body>
-<div class="sun" aria-hidden="true"></div>
-<div class="sun2" aria-hidden="true"><b></b><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<div class="sun" aria-hidden="true"><u></u></div>
+<div class="sun2" aria-hidden="true"><s></s><o></o><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 <div class="wrap">
 
 <header class="doc">
