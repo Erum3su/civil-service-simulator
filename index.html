@@ -39,6 +39,8 @@
   --mono2:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box}
+/* 有经典滚动条的桌面浏览器里 100vw 会略宽于可视区，裁掉，别再冒出横向滚动 */
+html{overflow-x:clip}
 button, input, select, textarea{
   -webkit-appearance:none; -moz-appearance:none; appearance:none;
   background-image:none;
@@ -136,33 +138,39 @@ body{
    渐变的尺寸一律用 vw 而不是百分比 —— 这一层高度等于整篇内容，
    用百分比的话图案会被拉成几千像素长。 */
 .paperlight{
+  /* 正好一屏宽。这一层不飘，所以不需要多余的漂移余量——
+     之前给了 130vw，直接把页面撑出了横向滚动条，
+     横着滑一点，固定在视口的那几层跟不过去，边上就露出一条缝。 */
   position:absolute; top:0; bottom:0;
-  left:50%; margin-left:-65vw; width:130vw;
+  left:50%; margin-left:-50vw; width:100vw;
   pointer-events:none; z-index:5;
   background:
-    /* 竖窗框的影子，约 30° 向右下倒 */
+    /* 竖窗框的影子，约 30° 向右下倒。
+       想把亮格挪到左上角，相位必须写进色标里 ——
+       绝不能用 background-position：background-repeat 默认是 repeat，
+       渐变图片就是盒子那么大，一偏移就被当成图块平铺，
+       偏移量落在哪儿哪儿就出现一条硬接缝。 */
     repeating-linear-gradient(60deg,
-      rgba(58,40,14,.092) 0,
-      rgba(58,40,14,.092) 8.5vw,
-      rgba(58,40,14,.053) 14.2vw,
-      rgba(58,40,14,.015) 18.5vw,
-      rgba(58,40,14,0)    21.7vw,
-      rgba(58,40,14,0)    87.7vw,
-      rgba(58,40,14,.015) 91vw,
-      rgba(58,40,14,.053) 95.3vw,
-      rgba(58,40,14,.092) 100vw),
+      rgba(58,40,14,0)    0,
+      rgba(58,40,14,0)    38.8vw,
+      rgba(58,40,14,.015) 42vw,
+      rgba(58,40,14,.053) 46.3vw,
+      rgba(58,40,14,.092) 52vw,
+      rgba(58,40,14,.092) 60.5vw,
+      rgba(58,40,14,.053) 66.2vw,
+      rgba(58,40,14,.015) 70.5vw,
+      rgba(58,40,14,0)    73.7vw,
+      rgba(58,40,14,0)    100vw),
     /* 横窗框的影子，接近水平、略微右低 */
     repeating-linear-gradient(8deg,
-      rgba(58,40,14,.062) 0,
-      rgba(58,40,14,.062) 5.6vw,
-      rgba(58,40,14,.03)  9.3vw,
-      rgba(58,40,14,0)    12.8vw,
-      rgba(58,40,14,0)    107.2vw,
-      rgba(58,40,14,.03)  111.2vw,
-      rgba(58,40,14,.062) 114.4vw,
-      rgba(58,40,14,.062) 120vw);
-  /* 相位：把亮格挪到左上角——光是从那儿进来的 */
-  background-position:52vw 0, 0 -30vw;
+      rgba(58,40,14,0)    0,
+      rgba(58,40,14,0)    77.2vw,
+      rgba(58,40,14,.03)  80.4vw,
+      rgba(58,40,14,.062) 84.4vw,
+      rgba(58,40,14,.062) 95.6vw,
+      rgba(58,40,14,.03)  99.6vw,
+      rgba(58,40,14,0)    102.8vw,
+      rgba(58,40,14,0)    120vw);
 }
 
 /* 上层 · 丁达尔亮束
@@ -177,7 +185,6 @@ body{
     rgba(255,248,224,.045) 38%,
     rgba(255,246,218,0)    46.5%,
     rgba(255,246,218,0)    53%);
-  background-position:26% 0;
   will-change:transform,opacity;
   animation:winMove2 52s ease-in-out infinite;
 }
