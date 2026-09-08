@@ -36,6 +36,7 @@
   --display:"Heiti SC","PingFang SC","Hiragino Sans GB","Source Han Sans SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
   --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Arial,sans-serif;
   --serif:"Songti SC","STSong","SimSun","Source Han Serif SC","Noto Serif CJK SC","Noto Serif SC",serif;
+  --mono2:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box}
 button, input, select, textarea{
@@ -129,6 +130,14 @@ header.doc{padding:26px 0 0; text-align:center}
 .enrow{display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
   margin-top:11px; padding-top:11px; border-top:1px dashed var(--line)}
 .enrow .nm{font-family:var(--display); font-size:13.5px; font-weight:800; color:var(--red); letter-spacing:1px; white-space:nowrap}
+.safeline{display:flex; justify-content:space-between; align-items:center; gap:12px;
+  margin-top:9px; padding-top:9px; border-top:1px dashed var(--line)}
+.safeline .nm{font-family:var(--display); font-size:13px; font-weight:800; letter-spacing:1px; white-space:nowrap}
+.safeline .vl{font-family:var(--display); font-size:12.5px; white-space:nowrap; font-variant-numeric:tabular-nums}
+.safeline.ok .nm, .safeline.ok .vl{color:#2f6b4f}
+.safeline.bad .nm, .safeline.bad .vl{color:var(--red); font-weight:800}
+.lockhint{margin-top:6px; font-family:var(--display); font-size:11.5px; color:var(--ink3);
+  letter-spacing:.5px; font-style:italic}
 .inspect{display:flex; justify-content:space-between; align-items:center; gap:12px;
   margin-top:9px; padding-top:9px; border-top:1px dashed var(--line)}
 .inspect .nm{font-family:var(--display); font-size:13px; font-weight:800; color:var(--ink2); letter-spacing:1px; white-space:nowrap}
@@ -318,6 +327,50 @@ button:focus-visible{outline:2px solid var(--red); outline-offset:2px}
   border-left:3px solid var(--red); padding:2px 0 2px 13px; margin:2px 0}
 .epi > div{display:flex; justify-content:space-between; padding:3px 0; gap:12px}
 .epi > .timeline{display:block}
+
+/* ============ 结局页 · 干部档案表 ============ */
+.arch{
+  margin-top:22px; border:1.5px solid var(--red); background:var(--card);
+  text-align:left; font-family:var(--sans);
+}
+.arch-hd{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:9px 14px; background:var(--red); color:#fff; -webkit-text-fill-color:#fff;
+}
+.arch-t{font-family:var(--serif); font-size:13.5px; font-weight:700; letter-spacing:2px; white-space:nowrap}
+.arch-n{font-family:var(--display); font-size:11.5px; opacity:.85; white-space:nowrap}
+.arch-body{padding:0 14px}
+.arch-row{
+  display:grid; grid-template-columns:30px auto 1fr; gap:0 10px; align-items:baseline;
+  padding:11px 0; border-bottom:1px dotted var(--line);
+}
+.arch-row:last-child{border-bottom:0}
+.arch-no{
+  font-family:var(--mono2); font-size:11px; color:var(--ink3);
+  font-variant-numeric:tabular-nums; letter-spacing:.5px;
+}
+.arch-name{
+  font-family:var(--display); font-size:14px; font-weight:800; color:var(--red);
+  letter-spacing:1.5px; white-space:nowrap; justify-self:start;
+  border:1px solid var(--red); padding:1px 8px 1px 9px; border-radius:1px;
+}
+.arch-src{
+  font-size:11.5px; color:var(--ink3); text-align:right; letter-spacing:.3px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.arch-desc{
+  grid-column:2 / -1; margin:6px 0 0; font-size:13px; line-height:1.75; color:var(--ink2);
+}
+.arch-ft{
+  padding:7px 14px 8px; border-top:1px dashed var(--line);
+  font-family:var(--display); font-size:10.5px; color:var(--ink3); letter-spacing:1px; text-align:center;
+}
+@media(max-width:440px){
+  .arch-row{grid-template-columns:26px 1fr; gap:0 8px}
+  .arch-src{grid-column:2; text-align:left; margin-top:4px}
+  .arch-desc{grid-column:1 / -1; margin-top:7px}
+  .arch-name{white-space:normal}
+}
 .timeline{overflow-x:hidden}
 .epi .k{color:var(--ink2)}
 
@@ -4614,6 +4667,19 @@ function panelStats(){
       ${statBar("家　庭", S.family, "family", "fam")}
       ${statBar("风　险", S.risk, "risk", "risk")}
     </div>
+    ${(!S.retired) ? (()=>{
+      const shield = (S.circle.in && !S.circle.fell ? 14 : 0) + tSum("shield");
+      const safe = 26 + shield;              // 巡视判定的零风险线
+      const gap = Math.round(safe - S.risk);
+      const shieldTxt = shield > 0 ? `　护身符 −${shield}` : "";
+      let cls = "ok", txt;
+      if(gap >= 0) txt = `距巡视安全线还有 ${cn(gap)}${shieldTxt}`;
+      else { cls = "bad"; txt = `已超出安全线 ${cn(-gap)}${shieldTxt}`; }
+      // 太干净的时候，提示大钱的门还没开
+      const locked = S.rank >= 3 && S.risk < 20;
+      return `<div class="safeline ${cls}"><span class="nm">安全线</span><span class="vl">${txt}</span></div>`
+        + (locked ? `<div class="lockhint">有些事，得先有人觉得你靠得住</div>` : "");
+    })() : ""}
     ${(!S.retired && S.nextInspect) ? (()=>{
       const d = S.nextInspect - S.year;
       const txt = d <= 0 ? "巡视组今年进驻" : d === 1 ? "明年就要来巡视了" : `下一轮巡视 · 大约 ${cn(d)} 年后`;
@@ -4904,10 +4970,21 @@ function renderEnd(){
 但它一直在那儿——在你每一次听见陌生号码时的那一下心跳里，在你不敢跟子女讲的那几年里，在你后来所有「幸好」开头的句子里。
 
 没被查到，和没有发生过，是两回事。</div></div>` : ""}
-    ${activeTraits().length?`<div class="epi"><div class="sec-title" style="margin-bottom:8px">档 案</div>
-      <div class="tpanel" style="margin:0;padding:0;border:0">${activeTraits().map(t=>`
-        <div class="ti"><span class="tn">${t.name}</span><span class="te">${t.from}</span>
-        <div class="td">${t.desc}</div></div>`).join("")}</div></div>`:""}
+    ${(()=>{ const ts = activeTraits(); if(!ts.length) return "";
+      return `<section class="arch">
+        <div class="arch-hd">
+          <span class="arch-t">干 部 档 案 · 附 记</span>
+          <span class="arch-n">共 ${cn(ts.length)} 项</span>
+        </div>
+        <div class="arch-body">${ts.map((t,i)=>`
+          <div class="arch-row">
+            <span class="arch-no">${String(i+1).padStart(2,"0")}</span>
+            <span class="arch-name">${fmt(t.name)}</span>
+            <span class="arch-src">${fmt(t.from)}</span>
+            <p class="arch-desc">${fmt(t.desc)}</p>
+          </div>`).join("")}</div>
+        <div class="arch-ft">本 页 系 系 统 自 动 归 集 · 不 另 行 通 知 本 人</div>
+      </section>`; })()}
     ${S.log.length?`<div class="epi"><div class="sec-title" style="margin-bottom:8px">履 历</div>
       <div class="timeline">${S.log.map(l=>`<div><span class="ty">${l[0]}</span><span>${l[1]}</span></div>`).join("")}</div></div>`:""}
     <div class="btnrow" style="justify-content:center;margin-top:24px">
