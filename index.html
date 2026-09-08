@@ -130,13 +130,7 @@ header.doc{padding:26px 0 0; text-align:center}
 .enrow{display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
   margin-top:11px; padding-top:11px; border-top:1px dashed var(--line)}
 .enrow .nm{font-family:var(--display); font-size:13.5px; font-weight:800; color:var(--red); letter-spacing:1px; white-space:nowrap}
-.safeline{display:flex; justify-content:space-between; align-items:center; gap:12px;
-  margin-top:9px; padding-top:9px; border-top:1px dashed var(--line)}
-.safeline .nm{font-family:var(--display); font-size:13px; font-weight:800; letter-spacing:1px; white-space:nowrap}
-.safeline .vl{font-family:var(--display); font-size:12.5px; white-space:nowrap; font-variant-numeric:tabular-nums}
-.safeline.ok .nm, .safeline.ok .vl{color:#2f6b4f}
-.safeline.bad .nm, .safeline.bad .vl{color:var(--red); font-weight:800}
-.lockhint{margin-top:6px; font-family:var(--display); font-size:11.5px; color:var(--ink3);
+.lockhint{margin-top:9px; padding-top:9px; border-top:1px dashed var(--line); font-family:var(--display); font-size:11.5px; color:var(--ink3);
   letter-spacing:.5px; font-style:italic}
 .inspect{display:flex; justify-content:space-between; align-items:center; gap:12px;
   margin-top:9px; padding-top:9px; border-top:1px dashed var(--line)}
@@ -4667,19 +4661,8 @@ function panelStats(){
       ${statBar("家　庭", S.family, "family", "fam")}
       ${statBar("风　险", S.risk, "risk", "risk")}
     </div>
-    ${(!S.retired) ? (()=>{
-      const shield = (S.circle.in && !S.circle.fell ? 14 : 0) + tSum("shield");
-      const safe = 26 + shield;              // 巡视判定的零风险线
-      const gap = Math.round(safe - S.risk);
-      const shieldTxt = shield > 0 ? `　护身符 −${shield}` : "";
-      let cls = "ok", txt;
-      if(gap >= 0) txt = `距巡视安全线还有 ${cn(gap)}${shieldTxt}`;
-      else { cls = "bad"; txt = `已超出安全线 ${cn(-gap)}${shieldTxt}`; }
-      // 太干净的时候，提示大钱的门还没开
-      const locked = S.rank >= 3 && S.risk < 20;
-      return `<div class="safeline ${cls}"><span class="nm">安全线</span><span class="vl">${txt}</span></div>`
-        + (locked ? `<div class="lockhint">有些事，得先有人觉得你靠得住</div>` : "");
-    })() : ""}
+    ${(!S.retired && S.rank >= 3 && S.risk < 20)
+      ? `<div class="lockhint">有些事，得先有人觉得你靠得住</div>` : ""}
     ${(!S.retired && S.nextInspect) ? (()=>{
       const d = S.nextInspect - S.year;
       const txt = d <= 0 ? "巡视组今年进驻" : d === 1 ? "明年就要来巡视了" : `下一轮巡视 · 大约 ${cn(d)} 年后`;
