@@ -16,9 +16,9 @@
 /* ============ 基础 ============ */
 :root{
   color-scheme: light;
-  --paper:#e3dfd4;
-  --card:#f5f2e8;
-  --card2:#ebe7da;
+  --paper:#e8e4d9;
+  --card:#f9f6ed;
+  --card2:#f0ecdf;
   --ink:#26221c;
   --ink2:#585245;
   --ink3:#8a8171;
@@ -91,8 +91,8 @@ body{
 .sun > u{
   position:absolute; display:block; top:-6vh; left:-8vw; width:86vw; height:88vh;
   background:radial-gradient(closest-side ellipse,
-    rgba(255,242,210,.9), rgba(255,238,202,.36) 48%, rgba(255,236,198,0) 78%);
-  animation:winBreath 58s ease-in-out infinite;
+    rgba(255,243,214,1), rgba(255,239,204,.42) 48%, rgba(255,236,198,0) 78%);
+  animation:winBreath 39s ease-in-out infinite;
 }
 
 /* 上层 · 屋里的明暗底子：左上进光，右下沉下去 */
@@ -101,8 +101,8 @@ body{
   background:linear-gradient(116deg,
     rgba(58,40,14,0)    0%,
     rgba(58,40,14,.014) 38%,
-    rgba(58,40,14,.04) 72%,
-    rgba(58,40,14,.072) 100%);
+    rgba(58,40,14,.032) 72%,
+    rgba(58,40,14,.058) 100%);
 }
 
 /* 上层 · 窗影本体
@@ -114,33 +114,33 @@ body{
   background:
     repeating-linear-gradient(60deg,
       rgba(58,40,14,.125) 0%,
-      rgba(58,40,14,.125) 8%,
-      rgba(58,40,14,.076) 11.5%,
-      rgba(58,40,14,.022) 15%,
-      rgba(58,40,14,0)    18%,
-      rgba(58,40,14,0)    43%,
-      rgba(58,40,14,.022) 46%,
-      rgba(58,40,14,.076) 49.5%,
+      rgba(58,40,14,.125) 4.5%,
+      rgba(58,40,14,.072) 7.5%,
+      rgba(58,40,14,.02)  9.8%,
+      rgba(58,40,14,0)    11.5%,
+      rgba(58,40,14,0)    46.5%,
+      rgba(58,40,14,.02)  48.2%,
+      rgba(58,40,14,.072) 50.5%,
       rgba(58,40,14,.125) 53%),
     repeating-linear-gradient(8deg,
       rgba(58,40,14,.085) 0%,
-      rgba(58,40,14,.085) 6%,
-      rgba(58,40,14,.042) 9%,
-      rgba(58,40,14,0)    12.5%,
-      rgba(58,40,14,0)    62%,
-      rgba(58,40,14,.042) 66%,
-      rgba(58,40,14,.085) 69%,
+      rgba(58,40,14,.085) 3.5%,
+      rgba(58,40,14,.04)  5.8%,
+      rgba(58,40,14,0)    8%,
+      rgba(58,40,14,0)    67%,
+      rgba(58,40,14,.04)  69.5%,
+      rgba(58,40,14,.085) 71.5%,
       rgba(58,40,14,.085) 75%),
     /* 窗光本身：午后偏暖 */
     linear-gradient(116deg,
-      rgba(255,238,198,.13) 0%,
-      rgba(255,236,194,.11) 44%,
+      rgba(255,238,198,.15) 0%,
+      rgba(255,236,194,.125) 44%,
       rgba(255,234,190,.075) 74%,
       rgba(255,233,188,.045) 100%);
   /* 相位：把亮格挪到左上角——光是从那儿进来的 */
   background-position:26% 0, 0 -24%, 0 0;
   will-change:transform,opacity;
-  animation:winMove 66s ease-in-out infinite;
+  animation:winMove 43s ease-in-out infinite;
 }
 
 /* 上层 · 丁达尔亮束
@@ -149,15 +149,49 @@ body{
 .sun2 > t{
   position:absolute; display:block; top:0; right:0; bottom:0; left:0;
   background:repeating-linear-gradient(60deg,
-    rgba(255,246,218,0)    18%,
-    rgba(255,248,224,.045) 24%,
-    rgba(255,250,230,.07)  30.5%,
-    rgba(255,248,224,.045) 37%,
-    rgba(255,246,218,0)    43%,
+    rgba(255,246,218,0)    11.5%,
+    rgba(255,248,224,.045) 20%,
+    rgba(255,250,230,.07)  29%,
+    rgba(255,248,224,.045) 38%,
+    rgba(255,246,218,0)    46.5%,
     rgba(255,246,218,0)    53%);
   background-position:26% 0;
   will-change:transform,opacity;
-  animation:winMove2 79s ease-in-out infinite;
+  animation:winMove2 52s ease-in-out infinite;
+}
+
+/* 上层 · 局部小光柱
+   拉长的椭圆渐变 = 一道软边的小光束；rotate(-30deg) 跟大影子的斜度对齐。
+   周期短得多（8~17 秒），幅度也小 —— 像窗外有东西在动，
+   不参与大节奏，只在局部闪。旋转是静态的，动画只走 translate / opacity。 */
+.sun2 > f{
+  position:absolute; display:block; border-radius:50%;
+  background:radial-gradient(closest-side ellipse,
+    rgba(255,250,228,.085), rgba(255,246,216,.03) 52%, rgba(255,244,210,0) 80%);
+  will-change:transform,opacity;
+}
+.sun2 > f:nth-of-type(1){left:2vw;  top:-4vh; width:15vw; height:62vh;
+  animation:winFlick1 11s ease-in-out infinite}
+.sun2 > f:nth-of-type(2){left:26vw; top:18vh; width:11vw; height:48vh;
+  animation:winFlick2 8.5s ease-in-out infinite}
+.sun2 > f:nth-of-type(3){left:44vw; top:-8vh; width:18vw; height:70vh;
+  animation:winFlick3 17s ease-in-out infinite}
+.sun2 > f:nth-of-type(4){left:14vw; top:52vh; width:9vw;  height:40vh;
+  animation:winFlick2 14s ease-in-out infinite reverse}
+
+@keyframes winFlick1{
+  0%,100%{ transform:rotate(-30deg) translate3d(0,0,0);       opacity:.35 }
+  38%    { transform:rotate(-30deg) translate3d(1.4vw,-1vh,0); opacity:1 }
+  70%    { transform:rotate(-30deg) translate3d(.5vw,.8vh,0);  opacity:.55 }
+}
+@keyframes winFlick2{
+  0%,100%{ transform:rotate(-30deg) translate3d(0,0,0);        opacity:.2 }
+  46%    { transform:rotate(-30deg) translate3d(-1.1vw,1.3vh,0); opacity:.95 }
+}
+@keyframes winFlick3{
+  0%,100%{ transform:rotate(-30deg) translate3d(0,0,0);        opacity:.5 }
+  33%    { transform:rotate(-30deg) translate3d(.9vw,1.6vh,0);  opacity:.85 }
+  66%    { transform:rotate(-30deg) translate3d(-.7vw,-.6vh,0); opacity:.3 }
 }
 
 /* 灰尘：沿着光束走，不是乱飘。真实的灰尘转个面就看不见了，所以亮度是忽明忽暗的 */
@@ -168,52 +202,52 @@ body{
   opacity:0;
   animation-name:winMote; animation-timing-function:linear; animation-iteration-count:infinite;
 }
-.sun2 i:nth-of-type(1){left:46.3vw; top:88.4vh; width:2.5px; height:2.5px; --o:0.82; --dx:11.6vw; --dy:-36.9vh; animation-duration:31.3s; animation-delay:-32.7s}
-.sun2 i:nth-of-type(2){left:-4.8vw; top:11.9vh; width:2px; height:2px; --o:0.89; --dx:5.5vw; --dy:-19.0vh; animation-duration:45.9s; animation-delay:-34.4s}
-.sun2 i:nth-of-type(3){left:12.2vw; top:15.0vh; width:2.5px; height:2.5px; --o:0.71; --dx:8.6vw; --dy:-38.7vh; animation-duration:22.4s; animation-delay:-16.2s}
-.sun2 i:nth-of-type(4){left:21.2vw; top:10.2vh; width:2.5px; height:2.5px; --o:0.67; --dx:7.2vw; --dy:-35.1vh; animation-duration:40.2s; animation-delay:-25.4s}
-.sun2 i:nth-of-type(5){left:58.8vw; top:41.4vh; width:2.5px; height:2.5px; --o:0.75; --dx:12.5vw; --dy:-37.7vh; animation-duration:41.3s; animation-delay:-10.6s}
-.sun2 i:nth-of-type(6){left:-1.0vw; top:73.8vh; width:3px; height:3px; --o:0.91; --dx:9.9vw; --dy:-23.7vh; animation-duration:21.6s; animation-delay:-42.7s}
-.sun2 i:nth-of-type(7){left:-3.1vw; top:38.2vh; width:2.5px; height:2.5px; --o:0.77; --dx:10.9vw; --dy:-28.4vh; animation-duration:41.1s; animation-delay:-8.6s}
-.sun2 i:nth-of-type(8){left:38.0vw; top:93.3vh; width:2px; height:2px; --o:0.5; --dx:10.9vw; --dy:-19.5vh; animation-duration:23.7s; animation-delay:-9.2s}
-.sun2 i:nth-of-type(9){left:25.2vw; top:25.4vh; width:3px; height:3px; --o:0.75; --dx:13.3vw; --dy:-23.2vh; animation-duration:43.9s; animation-delay:-18.4s}
-.sun2 i:nth-of-type(10){left:59.5vw; top:85.7vh; width:2px; height:2px; --o:0.87; --dx:10.1vw; --dy:-20.9vh; animation-duration:31.7s; animation-delay:-19.6s}
-.sun2 i:nth-of-type(11){left:7.9vw; top:94.7vh; width:1.5px; height:1.5px; --o:0.92; --dx:5.1vw; --dy:-37.8vh; animation-duration:27.7s; animation-delay:-18.9s}
-.sun2 i:nth-of-type(12){left:-0.8vw; top:60.9vh; width:2px; height:2px; --o:0.8; --dx:7.3vw; --dy:-31.6vh; animation-duration:40.0s; animation-delay:-16.5s}
-.sun2 i:nth-of-type(13){left:76.2vw; top:91.8vh; width:2px; height:2px; --o:0.54; --dx:10.0vw; --dy:-34.4vh; animation-duration:37.1s; animation-delay:-27.4s}
-.sun2 i:nth-of-type(14){left:-0.2vw; top:62.1vh; width:1.5px; height:1.5px; --o:0.83; --dx:8.9vw; --dy:-29.7vh; animation-duration:29.2s; animation-delay:-35.7s}
-.sun2 i:nth-of-type(15){left:34.2vw; top:64.1vh; width:2px; height:2px; --o:0.75; --dx:8.3vw; --dy:-23.4vh; animation-duration:36.3s; animation-delay:-30.3s}
-.sun2 i:nth-of-type(16){left:28.5vw; top:74.2vh; width:1.5px; height:1.5px; --o:0.62; --dx:5.7vw; --dy:-26.4vh; animation-duration:32.6s; animation-delay:-45.4s}
-.sun2 i:nth-of-type(17){left:42.8vw; top:-0.8vh; width:2.5px; height:2.5px; --o:0.73; --dx:12.4vw; --dy:-32.4vh; animation-duration:41.6s; animation-delay:-45.2s}
-.sun2 i:nth-of-type(18){left:50.6vw; top:44.4vh; width:1.5px; height:1.5px; --o:0.65; --dx:8.7vw; --dy:-35.7vh; animation-duration:33.1s; animation-delay:-16.7s}
-.sun2 i:nth-of-type(19){left:72.5vw; top:55.7vh; width:2.5px; height:2.5px; --o:0.56; --dx:10.7vw; --dy:-35.6vh; animation-duration:20.4s; animation-delay:-25.1s}
-.sun2 i:nth-of-type(20){left:27.7vw; top:24.8vh; width:2px; height:2px; --o:0.55; --dx:6.1vw; --dy:-28.6vh; animation-duration:22.7s; animation-delay:-25.1s}
-.sun2 i:nth-of-type(21){left:53.4vw; top:79.9vh; width:2.5px; height:2.5px; --o:0.6; --dx:6.9vw; --dy:-32.0vh; animation-duration:32.7s; animation-delay:-41.0s}
-.sun2 i:nth-of-type(22){left:31.9vw; top:80.6vh; width:2.5px; height:2.5px; --o:0.52; --dx:7.2vw; --dy:-32.2vh; animation-duration:39.2s; animation-delay:-20.8s}
-.sun2 i:nth-of-type(23){left:7.5vw; top:4.9vh; width:2px; height:2px; --o:0.52; --dx:10.7vw; --dy:-25.1vh; animation-duration:32.8s; animation-delay:-42.2s}
-.sun2 i:nth-of-type(24){left:21.8vw; top:55.9vh; width:2.5px; height:2.5px; --o:0.48; --dx:5.8vw; --dy:-35.8vh; animation-duration:42.5s; animation-delay:-18.5s}
-.sun2 i:nth-of-type(25){left:62.5vw; top:73.4vh; width:1.5px; height:1.5px; --o:0.63; --dx:7.8vw; --dy:-31.0vh; animation-duration:21.9s; animation-delay:-39.5s}
-.sun2 i:nth-of-type(26){left:58.8vw; top:63.6vh; width:2.5px; height:2.5px; --o:0.76; --dx:6.6vw; --dy:-35.6vh; animation-duration:20.9s; animation-delay:-21.5s}
-.sun2 i:nth-of-type(27){left:72.6vw; top:78.5vh; width:1.5px; height:1.5px; --o:0.48; --dx:8.0vw; --dy:-24.1vh; animation-duration:44.0s; animation-delay:-43.8s}
-.sun2 i:nth-of-type(28){left:63.4vw; top:81.9vh; width:2px; height:2px; --o:0.74; --dx:8.6vw; --dy:-27.8vh; animation-duration:20.1s; animation-delay:-6.4s}
-.sun2 i:nth-of-type(29){left:74.2vw; top:59.0vh; width:3px; height:3px; --o:0.65; --dx:11.0vw; --dy:-20.6vh; animation-duration:44.0s; animation-delay:-30.7s}
-.sun2 i:nth-of-type(30){left:24.8vw; top:-2.2vh; width:2px; height:2px; --o:0.94; --dx:11.4vw; --dy:-34.9vh; animation-duration:32.9s; animation-delay:-29.2s}
-.sun2 i:nth-of-type(31){left:73.6vw; top:11.5vh; width:2px; height:2px; --o:0.7; --dx:6.6vw; --dy:-25.3vh; animation-duration:28.5s; animation-delay:-32.4s}
-.sun2 i:nth-of-type(32){left:27.6vw; top:32.0vh; width:2px; height:2px; --o:0.47; --dx:12.6vw; --dy:-26.3vh; animation-duration:30.7s; animation-delay:-16.5s}
-.sun2 i:nth-of-type(33){left:78.2vw; top:89.3vh; width:2px; height:2px; --o:0.94; --dx:6.0vw; --dy:-25.3vh; animation-duration:43.6s; animation-delay:-24.3s}
-.sun2 i:nth-of-type(34){left:21.6vw; top:69.5vh; width:2.5px; height:2.5px; --o:0.85; --dx:10.5vw; --dy:-24.5vh; animation-duration:22.3s; animation-delay:-15.0s}
-.sun2 i:nth-of-type(35){left:2.0vw; top:7.3vh; width:2.5px; height:2.5px; --o:0.58; --dx:6.4vw; --dy:-36.4vh; animation-duration:35.5s; animation-delay:-42.0s}
-.sun2 i:nth-of-type(36){left:59.2vw; top:46.0vh; width:2px; height:2px; --o:0.58; --dx:9.1vw; --dy:-35.4vh; animation-duration:34.8s; animation-delay:-2.5s}
-.sun2 i:nth-of-type(37){left:39.5vw; top:60.2vh; width:2px; height:2px; --o:0.92; --dx:9.6vw; --dy:-37.9vh; animation-duration:28.2s; animation-delay:-41.7s}
-.sun2 i:nth-of-type(38){left:51.4vw; top:85.2vh; width:2.5px; height:2.5px; --o:0.76; --dx:12.6vw; --dy:-37.4vh; animation-duration:34.2s; animation-delay:-40.7s}
-.sun2 i:nth-of-type(39){left:12.6vw; top:89.1vh; width:1.5px; height:1.5px; --o:0.86; --dx:8.5vw; --dy:-27.7vh; animation-duration:45.4s; animation-delay:-6.1s}
-.sun2 i:nth-of-type(40){left:40.0vw; top:58.4vh; width:2.5px; height:2.5px; --o:0.5; --dx:9.5vw; --dy:-21.0vh; animation-duration:25.3s; animation-delay:-2.5s}
-.sun2 i:nth-of-type(41){left:45.8vw; top:50.9vh; width:3px; height:3px; --o:0.63; --dx:12.3vw; --dy:-38.5vh; animation-duration:23.4s; animation-delay:-37.0s}
-.sun2 i:nth-of-type(42){left:50.0vw; top:27.1vh; width:1.5px; height:1.5px; --o:0.68; --dx:6.8vw; --dy:-39.2vh; animation-duration:30.6s; animation-delay:-18.2s}
-.sun2 i:nth-of-type(43){left:20.0vw; top:89.0vh; width:2.5px; height:2.5px; --o:0.66; --dx:10.8vw; --dy:-39.3vh; animation-duration:35.1s; animation-delay:-20.0s}
-.sun2 i:nth-of-type(44){left:56.7vw; top:56.4vh; width:1.5px; height:1.5px; --o:0.61; --dx:5.2vw; --dy:-34.4vh; animation-duration:21.9s; animation-delay:-10.7s}
+.sun2 i:nth-of-type(1){left:46.3vw; top:88.4vh; width:2.5px; height:2.5px; --o:0.82; --dx:11.6vw; --dy:-36.9vh; animation-duration:21.3s; animation-delay:-22.2s}
+.sun2 i:nth-of-type(2){left:-4.8vw; top:11.9vh; width:2px; height:2px; --o:0.89; --dx:5.5vw; --dy:-19.0vh; animation-duration:31.2s; animation-delay:-23.4s}
+.sun2 i:nth-of-type(3){left:12.2vw; top:15.0vh; width:2.5px; height:2.5px; --o:0.71; --dx:8.6vw; --dy:-38.7vh; animation-duration:15.2s; animation-delay:-11.0s}
+.sun2 i:nth-of-type(4){left:21.2vw; top:10.2vh; width:2.5px; height:2.5px; --o:0.67; --dx:7.2vw; --dy:-35.1vh; animation-duration:27.3s; animation-delay:-17.3s}
+.sun2 i:nth-of-type(5){left:58.8vw; top:41.4vh; width:2.5px; height:2.5px; --o:0.75; --dx:12.5vw; --dy:-37.7vh; animation-duration:28.1s; animation-delay:-7.2s}
+.sun2 i:nth-of-type(6){left:-1.0vw; top:73.8vh; width:3px; height:3px; --o:0.91; --dx:9.9vw; --dy:-23.7vh; animation-duration:14.7s; animation-delay:-29.0s}
+.sun2 i:nth-of-type(7){left:-3.1vw; top:38.2vh; width:2.5px; height:2.5px; --o:0.77; --dx:10.9vw; --dy:-28.4vh; animation-duration:27.9s; animation-delay:-5.8s}
+.sun2 i:nth-of-type(8){left:38.0vw; top:93.3vh; width:2px; height:2px; --o:0.5; --dx:10.9vw; --dy:-19.5vh; animation-duration:16.1s; animation-delay:-6.3s}
+.sun2 i:nth-of-type(9){left:25.2vw; top:25.4vh; width:3px; height:3px; --o:0.75; --dx:13.3vw; --dy:-23.2vh; animation-duration:29.9s; animation-delay:-12.5s}
+.sun2 i:nth-of-type(10){left:59.5vw; top:85.7vh; width:2px; height:2px; --o:0.87; --dx:10.1vw; --dy:-20.9vh; animation-duration:21.6s; animation-delay:-13.3s}
+.sun2 i:nth-of-type(11){left:7.9vw; top:94.7vh; width:1.5px; height:1.5px; --o:0.92; --dx:5.1vw; --dy:-37.8vh; animation-duration:18.8s; animation-delay:-12.9s}
+.sun2 i:nth-of-type(12){left:-0.8vw; top:60.9vh; width:2px; height:2px; --o:0.8; --dx:7.3vw; --dy:-31.6vh; animation-duration:27.2s; animation-delay:-11.2s}
+.sun2 i:nth-of-type(13){left:76.2vw; top:91.8vh; width:2px; height:2px; --o:0.54; --dx:10.0vw; --dy:-34.4vh; animation-duration:25.2s; animation-delay:-18.6s}
+.sun2 i:nth-of-type(14){left:-0.2vw; top:62.1vh; width:1.5px; height:1.5px; --o:0.83; --dx:8.9vw; --dy:-29.7vh; animation-duration:19.9s; animation-delay:-24.3s}
+.sun2 i:nth-of-type(15){left:34.2vw; top:64.1vh; width:2px; height:2px; --o:0.75; --dx:8.3vw; --dy:-23.4vh; animation-duration:24.7s; animation-delay:-20.6s}
+.sun2 i:nth-of-type(16){left:28.5vw; top:74.2vh; width:1.5px; height:1.5px; --o:0.62; --dx:5.7vw; --dy:-26.4vh; animation-duration:22.2s; animation-delay:-30.9s}
+.sun2 i:nth-of-type(17){left:42.8vw; top:-0.8vh; width:2.5px; height:2.5px; --o:0.73; --dx:12.4vw; --dy:-32.4vh; animation-duration:28.3s; animation-delay:-30.7s}
+.sun2 i:nth-of-type(18){left:50.6vw; top:44.4vh; width:1.5px; height:1.5px; --o:0.65; --dx:8.7vw; --dy:-35.7vh; animation-duration:22.5s; animation-delay:-11.4s}
+.sun2 i:nth-of-type(19){left:72.5vw; top:55.7vh; width:2.5px; height:2.5px; --o:0.56; --dx:10.7vw; --dy:-35.6vh; animation-duration:13.9s; animation-delay:-17.1s}
+.sun2 i:nth-of-type(20){left:27.7vw; top:24.8vh; width:2px; height:2px; --o:0.55; --dx:6.1vw; --dy:-28.6vh; animation-duration:15.4s; animation-delay:-17.1s}
+.sun2 i:nth-of-type(21){left:53.4vw; top:79.9vh; width:2.5px; height:2.5px; --o:0.6; --dx:6.9vw; --dy:-32.0vh; animation-duration:22.2s; animation-delay:-27.9s}
+.sun2 i:nth-of-type(22){left:31.9vw; top:80.6vh; width:2.5px; height:2.5px; --o:0.52; --dx:7.2vw; --dy:-32.2vh; animation-duration:26.7s; animation-delay:-14.1s}
+.sun2 i:nth-of-type(23){left:7.5vw; top:4.9vh; width:2px; height:2px; --o:0.52; --dx:10.7vw; --dy:-25.1vh; animation-duration:22.3s; animation-delay:-28.7s}
+.sun2 i:nth-of-type(24){left:21.8vw; top:55.9vh; width:2.5px; height:2.5px; --o:0.48; --dx:5.8vw; --dy:-35.8vh; animation-duration:28.9s; animation-delay:-12.6s}
+.sun2 i:nth-of-type(25){left:62.5vw; top:73.4vh; width:1.5px; height:1.5px; --o:0.63; --dx:7.8vw; --dy:-31.0vh; animation-duration:14.9s; animation-delay:-26.9s}
+.sun2 i:nth-of-type(26){left:58.8vw; top:63.6vh; width:2.5px; height:2.5px; --o:0.76; --dx:6.6vw; --dy:-35.6vh; animation-duration:14.2s; animation-delay:-14.6s}
+.sun2 i:nth-of-type(27){left:72.6vw; top:78.5vh; width:1.5px; height:1.5px; --o:0.48; --dx:8.0vw; --dy:-24.1vh; animation-duration:29.9s; animation-delay:-29.8s}
+.sun2 i:nth-of-type(28){left:63.4vw; top:81.9vh; width:2px; height:2px; --o:0.74; --dx:8.6vw; --dy:-27.8vh; animation-duration:13.7s; animation-delay:-4.4s}
+.sun2 i:nth-of-type(29){left:74.2vw; top:59.0vh; width:3px; height:3px; --o:0.65; --dx:11.0vw; --dy:-20.6vh; animation-duration:29.9s; animation-delay:-20.9s}
+.sun2 i:nth-of-type(30){left:24.8vw; top:-2.2vh; width:2px; height:2px; --o:0.94; --dx:11.4vw; --dy:-34.9vh; animation-duration:22.4s; animation-delay:-19.9s}
+.sun2 i:nth-of-type(31){left:73.6vw; top:11.5vh; width:2px; height:2px; --o:0.7; --dx:6.6vw; --dy:-25.3vh; animation-duration:19.4s; animation-delay:-22.0s}
+.sun2 i:nth-of-type(32){left:27.6vw; top:32.0vh; width:2px; height:2px; --o:0.47; --dx:12.6vw; --dy:-26.3vh; animation-duration:20.9s; animation-delay:-11.2s}
+.sun2 i:nth-of-type(33){left:78.2vw; top:89.3vh; width:2px; height:2px; --o:0.94; --dx:6.0vw; --dy:-25.3vh; animation-duration:29.6s; animation-delay:-16.5s}
+.sun2 i:nth-of-type(34){left:21.6vw; top:69.5vh; width:2.5px; height:2.5px; --o:0.85; --dx:10.5vw; --dy:-24.5vh; animation-duration:15.2s; animation-delay:-10.2s}
+.sun2 i:nth-of-type(35){left:2.0vw; top:7.3vh; width:2.5px; height:2.5px; --o:0.58; --dx:6.4vw; --dy:-36.4vh; animation-duration:24.1s; animation-delay:-28.6s}
+.sun2 i:nth-of-type(36){left:59.2vw; top:46.0vh; width:2px; height:2px; --o:0.58; --dx:9.1vw; --dy:-35.4vh; animation-duration:23.7s; animation-delay:-1.7s}
+.sun2 i:nth-of-type(37){left:39.5vw; top:60.2vh; width:2px; height:2px; --o:0.92; --dx:9.6vw; --dy:-37.9vh; animation-duration:19.2s; animation-delay:-28.4s}
+.sun2 i:nth-of-type(38){left:51.4vw; top:85.2vh; width:2.5px; height:2.5px; --o:0.76; --dx:12.6vw; --dy:-37.4vh; animation-duration:23.3s; animation-delay:-27.7s}
+.sun2 i:nth-of-type(39){left:12.6vw; top:89.1vh; width:1.5px; height:1.5px; --o:0.86; --dx:8.5vw; --dy:-27.7vh; animation-duration:30.9s; animation-delay:-4.1s}
+.sun2 i:nth-of-type(40){left:40.0vw; top:58.4vh; width:2.5px; height:2.5px; --o:0.5; --dx:9.5vw; --dy:-21.0vh; animation-duration:17.2s; animation-delay:-1.7s}
+.sun2 i:nth-of-type(41){left:45.8vw; top:50.9vh; width:3px; height:3px; --o:0.63; --dx:12.3vw; --dy:-38.5vh; animation-duration:15.9s; animation-delay:-25.2s}
+.sun2 i:nth-of-type(42){left:50.0vw; top:27.1vh; width:1.5px; height:1.5px; --o:0.68; --dx:6.8vw; --dy:-39.2vh; animation-duration:20.8s; animation-delay:-12.4s}
+.sun2 i:nth-of-type(43){left:20.0vw; top:89.0vh; width:2.5px; height:2.5px; --o:0.66; --dx:10.8vw; --dy:-39.3vh; animation-duration:23.9s; animation-delay:-13.6s}
+.sun2 i:nth-of-type(44){left:56.7vw; top:56.4vh; width:1.5px; height:1.5px; --o:0.61; --dx:5.2vw; --dy:-34.4vh; animation-duration:14.9s; animation-delay:-7.3s}
 
-/* 太阳在动：影子 66 秒一个来回，亮束 79 秒 —— 两个周期不整除，
+/* 太阳在动：影子 43 秒一个来回，亮束 52 秒 —— 两个周期不整除，
    所以它们永远不会同步，看起来就不像在循环 */
 @keyframes winMove{
   0%,100%{ transform:translate3d(0,0,0);          opacity:.78 }
@@ -237,9 +271,10 @@ body{
 }
 /* 关掉动效时保留窗影，只是不动 */
 @media (prefers-reduced-motion:reduce){
-  .sun > u, .sun2 > o, .sun2 > t{ animation:none }
+  .sun > u, .sun2 > o, .sun2 > t, .sun2 > f{ animation:none }
   .sun2 > o{ transform:translate3d(3.7vw,2.6vh,0) }
   .sun2 > t{ transform:translate3d(-2.1vw,1.7vh,0) }
+  .sun2 > f{ transform:rotate(-30deg); opacity:.55 }
   .sun2 i{ display:none }
 }
 
@@ -565,7 +600,7 @@ button:focus-visible{outline:2px solid var(--red); outline-offset:2px}
 @media (prefers-color-scheme: dark){
   :root{
     color-scheme: light;
-    --paper:#e3dfd4; --card:#fbf8f1; --card2:#f3eee2;
+    --paper:#e8e4d9; --card:#fbf8f1; --card2:#f3eee2;
     --ink:#26221c; --ink2:#5c5548; --ink3:#8d8474;
     --red:#9c2b23; --red2:#c0392b; --line:#c9bfa8; --line2:#ddd4bf;
     --good:#3d6b45; --bad:#9c2b23;
@@ -587,7 +622,7 @@ button:focus-visible{outline:2px solid var(--red); outline-offset:2px}
 </head>
 <body>
 <div class="sun" aria-hidden="true"><u></u></div>
-<div class="sun2" aria-hidden="true"><s></s><o></o><t></t><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<div class="sun2" aria-hidden="true"><s></s><o></o><t></t><f></f><f></f><f></f><f></f><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 <div class="wrap">
 
 <header class="doc">
