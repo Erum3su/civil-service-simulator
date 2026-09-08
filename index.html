@@ -42,6 +42,8 @@ button, input, select, textarea{
   -webkit-appearance:none; -moz-appearance:none; appearance:none;
   background-image:none;
   -webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;              /* 长按不弹系统菜单 */
+  -webkit-user-select:none; user-select:none;  /* 长按不出蓝色选中层 */
   -webkit-text-fill-color:currentColor;   /* iOS 会用系统色覆盖按钮文字，这条锁死 */
   font:inherit; color:inherit;
   border-radius:0;
@@ -149,7 +151,6 @@ header.doc{padding:26px 0 0; text-align:center}
   padding:4px 12px; border-radius:2px; transition:.15s; white-space:nowrap;
   box-shadow:0 1px 0 rgba(156,43,35,.18);
 }
-.tchip:hover{background:var(--red); color:#fff; -webkit-text-fill-color:#fff}
 .tchip.on{background:var(--red); color:#fff; -webkit-text-fill-color:#fff}
 .tchip b{font-size:14px}
 .tpanel{margin-top:11px; padding-top:11px; border-top:1px dashed var(--line)}
@@ -181,7 +182,6 @@ header.doc{padding:26px 0 0; text-align:center}
   border-radius:2px; transition:.14s; position:relative;
   -webkit-text-fill-color:var(--ink);
 }
-.opt:hover:not(:disabled){background:#fff; border-color:var(--red); transform:translateX(3px)}
 .opt:disabled{opacity:.45; cursor:not-allowed}
 .opt .ot{font-weight:700; flex:1; line-height:1.5}
 .opt .oc{
@@ -209,7 +209,6 @@ header.doc{padding:26px 0 0; text-align:center}
 .pips{display:flex; gap:5px; flex-wrap:wrap; align-items:center}
 .pip{width:26px; height:26px; border:1px solid var(--line); background:#e2dac6; cursor:pointer; transition:.1s; border-radius:2px}
 .pip.on{background:var(--ink2); border-color:var(--ink2)}
-.pip:hover{border-color:var(--red)}
 .allocnote{margin-top:14px; padding-top:11px; border-top:1px dashed var(--line); font-size:12.5px; color:var(--ink3); line-height:1.7}
 .actrl{display:flex; gap:4px}
 .actrl button{
@@ -217,7 +216,6 @@ header.doc{padding:26px 0 0; text-align:center}
   cursor:pointer; font:inherit; font-size:15px; line-height:1; color:var(--ink);
   -webkit-text-fill-color:var(--ink); border-radius:2px;
 }
-.actrl button:hover:not(:disabled){background:#fff; border-color:var(--red); color:var(--red)}
 .actrl button:disabled{opacity:.35; cursor:not-allowed}
 
 /* ============ 按钮 ============ */
@@ -227,10 +225,32 @@ header.doc{padding:26px 0 0; text-align:center}
   border:0; padding:11px 30px;
   cursor:pointer; border-radius:2px; transition:.15s;
 }
-.btn:hover{background:#7d211a}
 .btn.ghost{background:transparent; color:var(--ink2); -webkit-text-fill-color:var(--ink2); border:1px solid var(--line); letter-spacing:2px; font-size:13px; padding:8px 18px}
-.btn.ghost:hover{border-color:var(--red); color:var(--red); background:#fff}
 .btnrow{display:flex; gap:9px; flex-wrap:wrap; align-items:center; margin-top:16px}
+/* ============ 交互态 ============
+   iOS Safari 点完之后会把 :hover 留在元素上，而 render() 是整段替换 innerHTML，
+   新按钮正好落在手指底下就继承了高亮。所以 hover 只给真正有鼠标的设备，
+   触摸设备用 :active —— 它在 touchend 时一定会清掉。
+================================================================ */
+@media (hover:hover) and (pointer:fine){
+  .opt:hover:not(:disabled){background:var(--card); border-color:var(--red); transform:translateX(3px)}
+  .btn:hover{background:#7d211a}
+  .btn.ghost:hover{border-color:var(--red); color:var(--red); -webkit-text-fill-color:var(--red); background:var(--card)}
+  .tchip:hover{background:var(--red); color:#fff; -webkit-text-fill-color:#fff}
+  .pip:hover{border-color:var(--red)}
+  .actrl button:hover:not(:disabled){background:var(--card); border-color:var(--red); color:var(--red); -webkit-text-fill-color:var(--red)}
+}
+/* 触摸反馈：按下时给一点，松手立刻还原 */
+.opt:active:not(:disabled){background:var(--card); border-color:var(--red)}
+.btn:active{background:#7d211a}
+.btn.ghost:active{border-color:var(--red)}
+.tchip:active{background:var(--red); color:#fff; -webkit-text-fill-color:#fff}
+.actrl button:active:not(:disabled){border-color:var(--red)}
+.pip:active{border-color:var(--red)}
+/* 点过之后按钮会留焦点，iOS 上同样表现为"亮着"；键盘操作仍然保留可见焦点圈 */
+button:focus{outline:none}
+button:focus:not(:focus-visible){outline:none; box-shadow:none}
+button:focus-visible{outline:2px solid var(--red); outline-offset:2px}
 .center{text-align:center}
 
 /* ============ 年终 ============ */
@@ -3788,6 +3808,7 @@ function render(){
   }
 
   app.innerHTML = h + saveBar();
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
   scrollTopIfNewView(`${S.phase}|${S.year}|${S.evIdx}`);
 }
 
