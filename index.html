@@ -6972,9 +6972,7 @@ function newGame(){
   };
   rollTalents();          // 天赋要在 startYear 之前定下来：精力上限就受它影响
   startYear();
-  const tal = activeTraits().filter(t => t.born);
-  if(tal.length) S.notices.unshift({ gray:true, t:"个 人 素 质",
-    b: tal.map(t => "「" + t.name + "」" + t.desc).join("\n\n") });
+  // 开局不再单独弹一张「个人素质」——天赋在档案里已经写着了，重复一遍是噪音
 }
 
 /* ---------- 浪潮 ---------- */
