@@ -6972,9 +6972,9 @@ function newGame(){
   };
   rollTalents();          // 天赋要在 startYear 之前定下来：精力上限就受它影响
   startYear();
-  const tal = activeTraits().filter(t => t.born);
-  if(tal.length) S.notices.unshift({ gray:true, t:"个 人 素 质",
-    b: tal.map(t => "「" + t.name + "」" + t.desc).join("\n\n") });
+  // const tal = activeTraits().filter(t => t.born);
+  // if(tal.length) S.notices.unshift({ gray:true, t:"个 人 素 质",
+  //   b: tal.map(t => "「" + t.name + "」" + t.desc).join("\n\n") });
 }
 
 /* ---------- 浪潮 ---------- */
