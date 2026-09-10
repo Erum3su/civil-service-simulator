@@ -747,14 +747,14 @@ const RISK = {
   // 指数取到 0.95 是为了让「拿得多」和「拿了一点」拉开距离 ——
   // 偶尔收一次的人每年计提一点几，一直在收的人是它的两三倍，
   // 二十年下来就是完全不同的两条曲线。这条指数是整个模型的分水岭。
-  HOLD_K:    62,
+  HOLD_K:    50,
   HOLD_P:    0.95,
   HOLD_CAP:  12,     // 单年计提的上限
   DECAY:     0.962,  // 旧事渐远
   DECAY_HI:  0.945,  // 风险很高时淡得快些
   DECAY_FLAT:0.30,
   CATCH_FLOOR: 22,   // 巡视落网：暴露度低于这条线，查不出来
-  CATCH_SPAN:  66,   // 超出部分按这个跨度折成概率
+  CATCH_SPAN:  56,   // 超出部分按这个跨度折成概率
   CATCH_CAP:   0.86,
   SELF_HARD:   118,  // 不用等巡视也会出事
   SELF_SOFT:   88,
@@ -767,20 +767,42 @@ function holdRisk(st){
   return Math.min(RISK.HOLD_CAP, Math.pow(g / RISK.HOLD_K, RISK.HOLD_P));
 }
 
+/* ---------- 政绩 / 人脉的上限 ----------
+   旧版一律 0~100，于是四十岁两条都顶满，后面二十年再怎么干都不动 ——
+   属性没了刻度，晋升自然就变成了走过场。
+
+   新版让上限跟着职级走：科员的天花板和正部的天花板不是一回事。
+   配套地，晋升评分改用「你在你这一级里做到了几成」（归一化到百分制）来算。
+   于是升上去那一刻，你的绝对值一点没变，相对值掉了一整档 ——
+   必须接着往上堆才能再升。这是这一版难度的主要来源，也让天赋的乘区一直有用。
+------------------------------------------------ */
+// 各投入下的均衡值：政绩 = 精力×2.2×(1+能力/200)÷0.055，人脉 = 精力×2.3÷0.042。
+// 平均分配（每栏 2~3 点）大约停在 140/130，集中一栏（5 点）能到 300/275。
+// 上限按这个来定：中层平均分配就能顶格，越往上越顶不动，正部这一级连集中都填不满。
+const CAP = [60, 78, 100, 128, 160, 200, 245, 290, 340, 395];
+function capOf(st){ return CAP[((st || S) || {}).rank || 0] || 100; }
+// 政绩/人脉专用的收敛：上界是当前职级的天花板
+const clc = v => Math.max(0, Math.min(capOf(), v));
+// 归一化到百分制：拿来跟固定阈值比、拿来算晋升评分
+const pctOf = v => v / capOf() * 100;
+
 /* ---------- 职级 ---------- */
 const RANKS = ["科员","副科","正科","副处","正处","副厅","正厅","副部","正部","副国级"];
 // 晋升到该级所需的：本级任职年限 / 参考年龄红线 / 坑位概率 / 评分门槛
+// need 是归一化之后的分数线（满分约 107~123，随职级的能力封顶浮动）。
+// 旧版中期只要 33~49，等于走过场——顶满属性以后躺着也能升。现在每一级都要求你
+// 在本级里确实做到了七八成，而升上去以后上限抬高、相对值下滑，得重新爬。
 const PROMO = [
   null,
-  { years:3, line:30, slot:.60, need:26 }, // →副科
-  { years:3, line:35, slot:.50, need:33 }, // →正科
-  { years:4, line:40, slot:.42, need:41 }, // →副处
-  { years:4, line:45, slot:.35, need:49 }, // →正处
-  { years:4, line:50, slot:.20, need:95 }, // →副厅
-  { years:4, line:55, slot:.16, need:102 }, // →正厅
-  { years:3, line:58, slot:.20, need:100 }, // →副部
-  { years:2, line:63, slot:.24, need:102 }, // →正部
-  { years:4, line:65, slot:.16, need:115 }, // →副国级
+  { years:3, line:30, slot:.60, need:34 },  // →副科
+  { years:3, line:35, slot:.50, need:48 },  // →正科
+  { years:4, line:40, slot:.42, need:62 },  // →副处
+  { years:4, line:45, slot:.35, need:74 },  // →正处
+  { years:4, line:50, slot:.20, need:88 },  // →副厅
+  { years:4, line:55, slot:.16, need:92 },  // →正厅
+  { years:3, line:58, slot:.20, need:101 }, // →副部  ← 部级这道墙：能力和机遇缺一不可
+  { years:2, line:63, slot:.24, need:104 }, // →正部
+  { years:4, line:65, slot:.16, need:113 }, // →副国级
 ];
 const RETIRE_AGE = r => r>=8 ? 999 : r>=7 ? 70 : r>=5 ? 68 : 65;
 const SALARY = [7,9,11,14,17,21,25,30,36,44]; // 万元/年，11 级一一对应（上层刻意压平：升官给的是权力，不是钱）
@@ -1080,6 +1102,22 @@ const TRAITS = [
   ========================================= */
 
   // —— 笔头 ——
+  /* ===== 功业词条 =====
+     没有任何事件会「授予」它们 —— 它们只是你手上真的攒够了东西之后，
+     自己长出来的。玩家会先看见词条，再回头去想它是从哪儿来的。 */
+  { id:"lg_hand",  name:"手上有东西",   from:"这些年办成的那几件",
+    desc:"你不是那种会来事的人，但每次真出了事，找的是你。这个位置不是争来的，是攒出来的。",
+    has:s=>(s.legacy||0)>=25, eff:{ workMul:1.08, promo:2 } },
+  { id:"lg_cite",  name:"有人拿你当依据", from:"你写的那些还在被引用",
+    desc:"你签过的字、定过的口径、写过的办法，现在有人在别的地方照着办。他们大多不知道那是你。",
+    has:s=>(s.legacy||0)>=45, eff:{ netDecay:0.82, promo:3, shield:6 } },
+  { id:"lg_book",  name:"那 本 册 子",   from:"没有落款的一本",
+    desc:"你把这些年趟过的坑写成了一册东西，没有署名，也没有发文号。它在这个系统里传了很多年。",
+    has:s=>(s.legacy||0)>=68, eff:{ studyMul:1.12, workMul:1.06, shield:12, promo:3 } },
+  { id:"lg_empty", name:"什么也没留下", from:"三十年，一件也想不起来",
+    desc:"你干了很多活，开了很多会，签了很多字。有一天有人问你这些年最得意的是哪一件，你想了很久。",
+    has:s=>s.age>=54 && (s.legacy||0)<=8, eff:{ hpDecay:1.06, famDecay:-0.3 } },
+
   { id:"b_penfast", born:true, fam:"写", name:"笔头快",   from:"大学四年的学生会材料",
     desc:"别人写到凌晨三点的东西，你两个小时出一稿。质量不一定更好，但先交上去的那份往往就成了定稿。",
     eff:{ workMul:1.10 } },
@@ -1576,7 +1614,7 @@ const ENDINGS = [
     text:s=>`你退休那年，单位按规矩给你办了个简朴的欢送会。\n\n你带过的人来了不少，现在都在各自的岗位上。有个当年被你骂哭过的年轻人，如今已经是正处了，他敬酒时手抖了一下。\n\n后来的很多年，你在小区里散步，遛狗，${s.flags.child?"接孙子放学":"给楼下的猫喂食"}。有人在电梯里认出你，你笑笑说，退了退了。\n\n你活到很老。走的时候是在睡梦里。` },
   { id:"gongcheng", seal:"功 成 身 退", test:s=>s.rank>=6 && s.family>=42,
     text:s=>`你在${RANKS[s.rank]}这个位置上退的。不算低，也谈不上高。\n\n退休那天你把办公室的东西装了两个纸箱，其中一个装的全是笔记本，从二〇二六年记到现在，一本没扔。\n\n你翻到第一本的第一页，上面写着：「今天报到。桌上材料二十七公分。」\n\n你笑了很久，然后合上了。` },
-  { id:"zhongceng", seal:"中 流 砥 柱", test:s=>s.rank>=5 && s.rank<=6 && s.merit>=72,
+  { id:"zhongceng", seal:"中 流 砥 柱", test:s=>s.rank>=5 && s.rank<=6 && pctOf(s.merit) >= 72,
     text:s=>`你在${RANKS[s.rank]}这个位置上退的，前后干了很多年。\n\n这个层级的人是最累的：上面定方向，下面等指令，中间所有具体的活都是你的。你签过的字比你说过的话多。\n\n退休那年单位换了新系统，有个年轻人来问你要历年的数据。你打开抽屉，把整理好的目录递给他。\n\n他愣了一下，说：这些您都留着啊？\n\n你说，总得有人留着。` },
   { id:"qingguan", seal:"两 袖 清 风", test:s=>s.rank>=4 && s.risk<12 && s.money<220,
     text:s=>`你这辈子没发过财。\n\n${s.flags.child
@@ -1771,7 +1809,7 @@ const EVENTS = [
       msg:s=>s.age<=32
         ? "她是本地一所中学的老师。后来她成了你妻子。\n\n她不太懂你单位的事，但她会在你半夜回家时把灯留着。\n\n这一点你直到很多年后才明白它的分量。"
         : "结婚那天办得很简单，两家人加起来四桌。\n\n她话不多，做事很稳。你有时候会想，要是早十年遇到会怎么样。\n\n然后你会想，早十年的你，多半看不上现在这样的日子。" },
-    { t:"家里做工程，条件最好", eff:{family:11,money:11,risk:14},
+    { t:"家里做工程，条件最好", eff:{family:11,money:11,risk:14,legacy:-2},
       fn:s=>{s.flags.married=true; s.flags.spouse="business"; s.flags.marryYear=s.year},
       msg:"婚后你的生活质量肉眼可见地提高了。\n\n以及，从此每年填报告的时候，「配偶从业情况」那一栏你都要多看两遍。" },
     { t:"隔壁局的，双职工", eff:{family:9,network:9},
@@ -1810,7 +1848,7 @@ const EVENTS = [
       fn:s=>{ if(chance(.42 + s.ability/260)){ const from=RANKS[s.rank]; s.rank=Math.min(9,s.rank+1); s.yearsInRank=0; s.merit*=.6; s.log.push([s.year,"遴选成功，进入市直机关"]);
         queuePromo(s, from, RANKS[s.rank],
           "调令是市委组织部发的，红头，比县里的文件宽一指。\n\n报到那天你提前了四十分钟，在楼下站着看这栋楼里的人进进出出。他们走路都比青阳县快一点。\n\n新办公室在七楼，桌上有一台还没拆封的电脑。你把那份调令压在了玻璃板底下。");
-        s.pendMsg="笔试面试都过了。你走的那天，老周替你收拾了桌子，说了句「好好干」。\n\n【你的职级和平台都上了一级】"; } else { s.network=cl(s.network-8); s.pendMsg="面试差了两名。\n\n回单位上班的第一天，所有人都对你特别客气。那种客气比嘲笑难受。"; } } },
+        s.pendMsg="笔试面试都过了。你走的那天，老周替你收拾了桌子，说了句「好好干」。\n\n【你的职级和平台都上了一级】"; } else { s.network = clc(s.network-8); s.pendMsg="面试差了两名。\n\n回单位上班的第一天，所有人都对你特别客气。那种客气比嘲笑难受。"; } } },
     { t:"不报，这里熬着也快到{下一级}了", eff:{merit:4,network:3},
       msg:"你留下了。那年遴选走了两个人，他们的位置很快被填上，像什么都没发生过。" },
   ]},
@@ -1820,7 +1858,7 @@ const EVENTS = [
   text:`省厅要人，借调一年，可能留下，也可能一年后原样退回。\n\n办公室主任说得很直白：「去了是机会，回来是笑话，你自己掂量。」`,
   opts:[
     { t:"去", cost:4, eff:{merit:11,network:9,health:-7,family:-9},
-      fn:s=>{ if(chance(.3)){ s.network=cl(s.network+14); s.flags.provPatron=true; s.pendMsg="一年后你被留下了。省厅的视野和县里完全不是一回事。\n\n【你在省里有了人】"; } else { s.pendMsg="一年后你被退回来了。你带回来的除了一身疲惫，还有一本通讯录。\n\n通讯录后来救过你一次。"; } } },
+      fn:s=>{ if(chance(.3)){ s.network = clc(s.network+14); s.flags.provPatron=true; s.pendMsg="一年后你被留下了。省厅的视野和县里完全不是一回事。\n\n【你在省里有了人】"; } else { s.pendMsg="一年后你被退回来了。你带回来的除了一身疲惫，还有一本通讯录。\n\n通讯录后来救过你一次。"; } } },
     { t:"不去，守住手里的位置", eff:{merit:4,family:4},
       msg:"后来去的是隔壁科室的小刘。三年后他成了你的上级。\n\n当然，这是三年后的事，当时谁也不知道。" },
   ]},
@@ -1836,7 +1874,7 @@ const EVENTS = [
       msg:"你留下了。\n\n很多年后，当你卡在副处上不去的时候，组织部的朋友私下跟你说了一句：你要是当年下去过就好了。" },
   ]},
 
-{ id:"mishu", w:7, cond:s=>s.rank>=1 && s.rank<=3 && s.network>=25 && s.age<=42, once:true, tag:"机会",
+{ id:"mishu", w:7, cond:s=>s.rank>=1 && s.rank<=3 && pctOf(s.network) >= 25 && s.age<=42, once:true, tag:"机会",
   title:"秘书",
   text:`一位领导要挑个秘书。\n\n跟对了人，几年抵别人十几年；跟错了人，这几年就是白干，甚至倒扣。`,
   opts:[
@@ -1855,7 +1893,7 @@ const EVENTS = [
     if(t===2) return `又一个信封，这次压在茶杯底下。\n\n整套动作你都认得，因为上一个你处理过。\n\n唯一不一样的是厚度。`;
     return `这次没有信封了，是一张卡，夹在一本书里。\n\n送书的人走到门口回头说了一句：「您看着办。」\n\n这四个字这些年你听得越来越顺耳，这件事本身就够你想一会儿的。`; },
   opts:[
-    { t:"收下", eff:{bribe:2.7,risk:26},
+    { t:"收下", eff:{bribe:2.7,risk:26,legacy:-3},
       msg:"你把它锁进了抽屉。那天下午你什么都没干成，一直在听走廊里的脚步声。\n\n后来你就习惯了。习惯是最危险的东西。" },
     { t:"追出去还给他", eff:{risk:-6,network:-3,merit:3},
       msg:"你在楼梯口追上他。他很尴尬，你也很尴尬。\n\n那件事最后按规矩办了。他后来逢人就说你这个人「没意思」。" },
@@ -1867,7 +1905,7 @@ const EVENTS = [
   title:"购物卡",
   text:`装修公司的老板过年来拜访，放下两盒茶叶。\n\n茶叶盒很沉。你打开看了，里面是卡。`,
   opts:[
-    { t:"留下", eff:{bribe:1.05,risk:19},
+    { t:"留下", eff:{bribe:1.05,risk:19,legacy:-3},
       msg:"你把卡放进了书柜最上层。\n\n这一年你在家里换了个新书柜，新书柜也有最上层。" },
     { t:"让办公室退回去", eff:{risk:-7,network:-4},
       msg:"他后来在饭桌上说：这位领导原则性很强。\n\n这句话在他们那个圈子里的意思是：这个人办不了事。" },
@@ -1877,7 +1915,7 @@ const EVENTS = [
   title:"配偶经商",
   text:`{配偶}想和朋友合伙开个公司，业务跟你分管的领域「有一点点」关系。\n\n她说得很小心：「就挂个名，我不出面。」`,
   opts:[
-    { t:"同意", eff:{money:22,risk:32,family:9}, fn:s=>{s.flags.spouseBiz=true; if(!s.flags.marryYear)s.flags.marryYear=s.year;},
+    { t:"同意", eff:{money:22,risk:32,family:9,legacy:-2}, fn:s=>{s.flags.spouseBiz=true; if(!s.flags.marryYear)s.flags.marryYear=s.year;},
       msg:"钱来得比你想象的快很多。\n\n快到你有时候会想，这真的是{TA}自己挣的吗。这个念头你没敢深想。" },
     { t:"不行，让她换个方向", eff:{family:-11,risk:-5},
       msg:"{TA}那天晚上说了一句：我跟了你，是不是把这辈子也搭进去了。\n\n你没答上来。" },
@@ -1913,8 +1951,28 @@ const EVENTS = [
     if(t===2) return `又一个。拆迁、历史遗留、两任前领导——连措辞都跟上次那个一样。\n\n一把手环视一圈的时候，有两个人下意识看了你一眼。\n\n没有人说话，但这次的沉默是有方向的。`;
     return `这次会上没有人环视一圈。\n\n所有人从一开始就看着你。\n\n因为上一个这样的项目，是你牵的头。`; },
   opts:[
-    { t:"我来", cost:5, eff:{health:-9,family:-7},
-      fn:s=>{ if(chance(.55 + s.ability/300 + s.network/400)){ s.merit=cl(s.merit+24); s.flags.bigwin=true; s.pendMsg="你干成了。\n\n签字那天一把手在会上说了你的名字，说了三次。\n\n【重大政绩 · 这是能记进档案的东西】"; } else { s.merit=cl(s.merit-8); s.risk+=10; s.pendMsg="中途出了群体性事件，项目停了。\n\n没有人追究你的责任——因为所有人都知道这事本来就干不成。但也没有人再提起你。"; } } },
+    /* 会上举手是不存在的。真实的做法只有三种：会后单独去、让人替你递、或者等他点你的名。 */
+    { t:"散会后，单独去他办公室", cost:5, eff:{health:-9,family:-7},
+      fn:s=>{ s.pendMsg = "你在会后等了四十分钟，等到他办公室的人都走空了才敲门。\n\n你没有说「我来」，你说的是「这个事我看了一下，有几个点可能可以试试」。\n\n他抬头看了你几秒，说：你去牵吧。\n\n第二天的会上，是他点的你的名。这两件事的差别，在这栋楼里比什么都重要。\n\n";
+        if(chance(.58 + s.ability/300 + s.network/400)){ s.merit = clc(s.merit+24); s.flags.bigwin=true; s.legacy=(s.legacy||0)+10;
+          s.pendMsg += "——\n\n你干成了。\n\n签字那天一把手在会上说了你的名字，说了三次。\n\n【重大政绩 · 这是能记进档案的东西】"; }
+        else { s.merit = clc(s.merit-8); s.risk+=10;
+          s.pendMsg += "——\n\n中途出了群体性事件，项目停了。\n\n没有人追究你的责任——因为所有人都知道这事本来就干不成。但也没有人再提起你。"; } } },
+    { t:"让分管领导先替你递句话", cost:4, eff:{network:-5,health:-6,family:-4},
+      cond:s=>pctOf(s.network) >= 28,
+      fn:s=>{ s.pendMsg = "你没有直接去。你先找了分管的那位，说得很轻：这个事要是没人接，我可以试试。\n\n三天后一把手在一个别的场合问了你一句：那个项目你有想法？\n\n你说有一点。\n\n";
+        if(chance(.66 + s.ability/300)){ s.merit = clc(s.merit+21); s.flags.bigwin=true; s.legacy=(s.legacy||0)+10;
+          s.pendMsg += "——\n\n事情办成了。\n\n这条路比自己去要慢，但也稳——出了问题，替你递话的那位跑不掉。\n\n【重大政绩】"; }
+        else { s.merit = clc(s.merit-6);
+          s.pendMsg += "——\n\n事情没办成。\n\n但因为不是你自己请的缨，追下来的时候，你的名字排在第二个。\n\n分管的那位此后有半年没怎么跟你说话。"; } } },
+    { t:"不表态，等他点名", cost:1, eff:{health:-2},
+      fn:s=>{ if(pctOf(s.merit) >= 45 || pctOf(s.network) >= 45){
+          s.flags.pointedAt = true;
+          s.merit = clc(s.merit+6);
+          s.pendMsg = "散会前的最后一分钟，他念了你的名字。\n\n没有商量，是通知。\n\n你说好。\n\n这件事你后来才想明白：被点名和自己请缨，办的是同一件事，但前者你没得挑，后者你至少还能挑时候。\n\n【这个项目落在你头上了 · 明年见分晓】"; }
+        else {
+          s.merit = clc(s.merit-3);
+          s.pendMsg = "他环视了一圈，目光在你这儿没有停。\n\n最后点的是隔壁的老陈。\n\n你松了一口气。松完之后，你在那口气里坐了一会儿。"; } } },
     { t:"低头看手机", eff:{merit:-4,health:3},
       msg:"最后是隔壁的老陈接了。\n\n三年后他因为这个项目提了副处。也可能是因为别的，谁说得清呢。" },
   ]},
@@ -2050,7 +2108,7 @@ const EVENTS = [
       msg:"小刘替你喝了八两，当晚进了医院。\n\n他第二天照常上班，笑着说没事。他也才二十七岁。" },
   ]},
 
-{ id:"award", w:6, cond:s=>s.merit>=45 && !s.flags.award, tag:"荣誉",
+{ id:"award", w:6, cond:s=>pctOf(s.merit) >= 45 && !s.flags.award, tag:"荣誉",
   title:"表彰",
   text:`你被评为全市优秀公务员，要上台发言。\n\n讲话稿是办公室写的，里面有一句「始终把群众的事放在心上」。`,
   opts:[
@@ -2125,7 +2183,7 @@ const EVENTS = [
   opts:[
     { t:"如实填报，并要求他退出", eff:{risk:-18,family:-13,money:-4},
       msg:"你哥在电话里骂了你二十分钟，最后一句是「你别忘了你是谁供出来的」。\n\n你挂了电话，在办公室坐到天黑。" },
-    { t:"照常填，那栏空着", eff:{risk:30,bribe:1.1,family:6},
+    { t:"照常填，那栏空着", eff:{risk:30,bribe:1.1,family:6,legacy:-3},
       msg:"表交上去了，没人问。\n\n从此每次听说哪个地方在查这类事，你都会多看两眼新闻。" },
   ]},
 
@@ -2148,7 +2206,7 @@ const EVENTS = [
   text:`机构改革，你们科室要撤并。名单还没定，但屋子里所有人都在算自己的分。\n\n有人已经开始跑了。`,
   opts:[
     { t:"跑关系，争取留在核心部门", cost:4, eff:{network:6,money:-2.5,risk:9},
-      fn:s=>{ if(chance(.6+s.network/300)){ s.pendMsg="你留下了。\n\n留下的人不敢露出高兴，走的人也不敢露出难过。那几天办公室里安静得可怕。"; } else { s.merit=cl(s.merit-11); s.pendMsg="你还是被分流了。\n\n新单位在城郊，通勤单程一小时二十分钟。你在公交车上有很多时间可以想事情。"; } } },
+      fn:s=>{ if(chance(.6+s.network/300)){ s.pendMsg="你留下了。\n\n留下的人不敢露出高兴，走的人也不敢露出难过。那几天办公室里安静得可怕。"; } else { s.merit = clc(s.merit-11); s.pendMsg="你还是被分流了。\n\n新单位在城郊，通勤单程一小时二十分钟。你在公交车上有很多时间可以想事情。"; } } },
     { t:"服从组织安排", eff:{merit:-6,network:4,health:2},
       msg:"你被分到了一个清水衙门。\n\n那两年你睡得很好，升不上去，但也没有人来找你。你后来常常怀念那两年。" },
   ]},
@@ -2178,7 +2236,7 @@ const EVENTS = [
   text:`云江新区抽调干部。三年，一片滩涂，什么都得从零开始。\n\n干成了是火箭，干不成是坟场。`,
   opts:[
     { t:"去", cost:5, eff:{health:-11,family:-14},
-      fn:s=>{ if(chance(.5+s.ability/300)){ s.merit=cl(s.merit+27); s.network=cl(s.network+9); s.flags.bigwin=true; s.pendMsg="三年后，滩涂上有了路、有了灯、有了人。\n\n你在新区管委会的窗户前站着，看见楼下有小孩在跑。\n\n【重大政绩】"; } else { s.merit=cl(s.merit-9); s.pendMsg="三年后，规划调整了。你们建到一半的东西成了别人报告里的教训。\n\n你回原单位报到那天，人事科的小姑娘问：您是新来的吗？"; } } },
+      fn:s=>{ if(chance(.5+s.ability/300)){ s.merit = clc(s.merit+27); s.network = clc(s.network+9); s.flags.bigwin=true; s.legacy=(s.legacy||0)+10; s.pendMsg="三年后，滩涂上有了路、有了灯、有了人。\n\n你在新区管委会的窗户前站着，看见楼下有小孩在跑。\n\n【重大政绩】"; } else { s.merit = clc(s.merit-9); s.pendMsg="三年后，规划调整了。你们建到一半的东西成了别人报告里的教训。\n\n你回原单位报到那天，人事科的小姑娘问：您是新来的吗？"; } } },
     { t:"不去", eff:{family:8,merit:-3},
       msg:"你留在了原地。原地也挺好，原地没有风险。\n\n原地也没有别的。" },
   ]},
@@ -2327,7 +2385,7 @@ const EVENTS = [
     return `这一次对方连天气都没问。\n\n他说：「老规矩。」\n\n你握着电话，忽然想弄清楚一件事——从哪一年开始，你这里有了「老规矩」。`; },
   opts:[
     { t:"写一份情况说明，申请回避", cost:2, eff:{merit:7,network:-16,risk:-9},
-      fn:s=>{ s.flags.recused=true;
+      fn:s=>{ s.flags.recused=true; s.legacy=(s.legacy||0)+6;
         s.pendMsg="你把那通电话的时间、内容、和对方是谁，一条一条写进了情况说明，交给了纪检组。\n\n有人说你傻，说得还挺客气。\n\n那份说明进了你的档案。很多年后有一次组织谈话，谈话的人翻到那一页，抬头看了你一眼，什么也没说。\n\n【档案里多了一份回避记录】"; } },
     { t:"做了点技术处理", eff:{merit:6,network:11,risk:27},
       msg:"标顺利地落在了那家公司。所有程序都合规，找不出一处毛病。\n\n老领导后来在一个场合拍了拍你的肩膀，什么也没说。\n\n那一下拍得挺重的。" },
@@ -2424,11 +2482,11 @@ const EVENTS = [
   title:"不同意见",
   text:`班子会上，一把手的方案你不同意。你的理由很硬，数据都在手上。\n\n会议室里十一个人，都在等你开口或者不开口。`,
   opts:[
-    { t:"当场把话说完", cost:2, eff:{merit:12,network:-16,risk:-4},
+    { t:"当场把话说完", cost:2, eff:{merit:12,network:-16,risk:-4,legacy:6},
       msg:"你讲了六分钟。会议室很安静。\n\n方案最后还是通过了，但改了两条，是你提的那两条。\n\n散会后一把手叫住你，说：以后这种话，会前跟我说。\n\n这句话有两种听法，你两种都听了。" },
     { t:"会上不说，会后单独找他", cost:2, eff:{network:9,merit:4},
       msg:"你在他办公室待了四十分钟。他听完，说再想想。\n\n三天后方案调整了，署的是他的名字。\n\n这就是这个系统里最体面的一种成功。" },
-    { t:"举手同意", eff:{network:6,merit:-9,risk:8},
+    { t:"跟着表了态", eff:{network:6,merit:-9,risk:8},
       msg:"全票通过。\n\n两年后那个项目出了问题，追责的时候翻会议记录，你的名字在同意栏里。\n\n没有人记得你当时想说什么。" },
   ]},
 
@@ -2496,7 +2554,7 @@ const EVENTS = [
       msg:"你交接得干干净净，连办公室的绿植都留下了。\n\n新岗位很清闲，你有时候一整天没有一个电话。\n\n第一年你很不习惯，第二年你开始觉得，这样也挺好。" },
     { t:"争取一下，再干两年", cost:4, eff:{network:-9,health:-7,merit:5},
       fn:s=>{ if(chance(.45)){ s.pendMsg="你找了两个人，说了很多话。\\n\\n最后争取到了两年。\\n\\n这两年你干得很拼，因为你知道所有人都在看你值不值这两年。"; }
-              else { s.merit=cl(s.merit-15); s.network=cl(s.network-11);
+              else { s.merit = clc(s.merit-15); s.network = clc(s.network-11);
                      s.pendMsg="你找了两个人，说了很多话。\\n\\n没争取到，而且现在所有人都知道你争取过了。\\n\\n交接那天，来送你的人比原本会来的少了一半。"; } } },
   ]},
 
@@ -2505,7 +2563,7 @@ const EVENTS = [
   title:"干股",
   text:`一个做工程的朋友说，公司要给你留一点份额。不用出钱，不用签字，不用出面。\n\n他说这话的时候在笑，好像在讲一件很平常的事。\n\n在他那个世界里，这确实很平常。`,
   opts:[
-    { t:"要了", eff:{bribe:29,risk:52},
+    { t:"要了", eff:{bribe:29,risk:52,legacy:-3},
       fn:s=>{ s.flags.shares=true;
         s.flags.shareIncome = Math.round(2.3*bribeMul(s)*10)/10;
         s.pendMsg="第一年分红打过来的时候，你在手机银行前面坐了很久。\n\n那个数字比你二十年工资加起来还多。\n\n更要命的是，它明年还会来一次，后年还会来一次。\n\n从那天起，你多了一件永远做不完的事：想那一天会怎么来。"; },
@@ -2518,7 +2576,7 @@ const EVENTS = [
   title:"结算",
   text:`一个已经竣工验收的工程，施工方送来了「结算尾款的一点心意」。\n\n数目大到不能用信封装，只能用箱子。`,
   opts:[
-    { t:"收下", eff:{bribe:15,risk:46},
+    { t:"收下", eff:{bribe:15,risk:46,legacy:-3},
       msg:"箱子在你后备箱里放了三天，你才敢拿回家。\n\n那三天你把车停在了地下车库最里面的位置。\n\n后来你换了辆车，但每次停车，还是习惯往最里面开。" },
     { t:"退回去，就当没发生", eff:{risk:-11,network:-7},
       msg:"你让秘书原封退了回去。\n\n对方后来托人打听：领导是不是嫌少？\n\n这个问题让你笑了一下。他们的世界里没有第三个选项。" },
@@ -2540,7 +2598,7 @@ const EVENTS = [
 
 /* ---------- 外逃三段式 ---------- */
 { id:"offshore", w:15, pri:s=>2.4,
-  cond:s=>(s.grey||0)>=260 && s.risk>=30 && s.rank>=3 && s.rank<=6 && !s.flags.assetsOut, once:true, tag:"风险",
+  cond:s=>(s.grey||0)>=190 && s.risk>=28 && s.rank>=4 && s.rank<=6 && !s.flags.assetsOut, once:true, tag:"风险",
   title:"后路",
   text:s=>`这个念头是你自己起的。\n\n起因是一条不到二十个字的通报，某地某人，你不认识。你把那条通报翻来覆去看了三遍，然后关掉手机，在阳台上站了很久。\n\n你账上说不清的部分已经有 ${yuan(s.grey||0,0)}。你很清楚，这个数字自己长脚了——它不会停在这儿。\n\n接下来的两个月，你用一部没实名的手机查了很多东西，问了三个人，见了一个。\n\n对方说得很平静：钱可以出去，人可以晚一步。但要早，越往后通道越窄。`,
   opts:[
@@ -2566,7 +2624,7 @@ const EVENTS = [
       fn:s=>{ s.flags.escapeAsked = true;
         s.pendMsg = "你把材料合上，回房间睡了。\n\n那天晚上你睡得很沉，是很多年来最沉的一觉。\n\n你不知道明天会发生什么，但你知道自己不会在别的地方醒来。"; } },
     { t:"不走，而且天亮就去说清楚", cost:4, eff:{risk:-48,merit:-16,network:-22,money:-40},
-      fn:s=>{ s.flags.escapeAsked = true; s.flags.confessed = true;
+      fn:s=>{ s.flags.escapeAsked = true; s.flags.confessed = true; s.legacy=(s.legacy||0)+7;
         s.pendMsg = "你没有等到后天。第二天早上八点，你自己走进了那栋楼。\n\n谈了很多天，退了很多东西，受了处分，降了级。\n\n从那栋楼里出来的那个下午下着小雨，你没打伞。\n\n那是十几年来你睡得最好的一晚。"; } },
   ]},
 
@@ -2981,7 +3039,7 @@ const EVENTS = [
         s.money = Math.max(0, s.money - grey*0.75);
         s.flags.shareIncome = 0; s.grey = 0;
         s.risk = cl(s.risk*0.28, 0, 140);
-        s.circle.fell = true; s.flags.circleFell = true; s.flags.confessed = true;
+        s.circle.fell = true; s.flags.circleFell = true; s.flags.confessed = true; s.legacy=(s.legacy||0)+7;
         s.pendMsg="你自己走进了那栋楼，带着一个整理了三个晚上的本子。\n\n谈了很多天，退了很多东西。降级、处分、通报，一样没少。\n\n从那栋楼里出来的下午下着小雨，你没打伞。你在门口站了一会儿，第一次觉得雨挺好闻的。\n\n【退赔 "+(grey*0.75).toFixed(0)+" 万 · 风险大幅下降 · 前程基本到此为止】"; } },
     { t:"把那份录音交上去", cost:2, eff:{network:-34,merit:6},
       cond:s=>s.flags.tape,
@@ -3011,10 +3069,10 @@ const EVENTS = [
   title:"一块地",
   text:`城东那块地的性质要调整，工业改商住。\n\n从流程上说，这件事需要一次会议、四个签字、和一份专家论证。四个签字里，有一个是你的。\n\n没有人跟你谈钱。来的人只说了一句：「这个事办成了，您以后就不用再操心这些了。」\n\n您以后就不用再操心这些了——你在心里把这句话拆开看了很久。`,
   opts:[
-    { t:"签", eff:{bribe:36,risk:64,network:14},
+    { t:"签", eff:{bribe:36,risk:64,network:14,legacy:-3},
       fn:s=>{ s.flags.landDeal = true; },
       msg:"会开得很顺，四十分钟结束。\n\n你签字的时候手很稳，稳到你自己都有点吃惊。\n\n那笔钱到的时候你没有数，因为数不过来。你把它分在了几个地方，其中有些连家里人都不知道。\n\n从那天起，你每次经过城东那片工地，都会不自觉地转过头去看一眼。" },
-    { t:"签，但让主管副职先签", eff:{bribe:17,risk:38,merit:-6},
+    { t:"签，但让主管副职先签", eff:{bribe:17,risk:38,merit:-6,legacy:-3},
       fn:s=>{ s.flags.landDeal = true; s.flags.scapegoat = true; },
       msg:"你让分管的副职先签，你在最后一个。程序上完全说得通。\n\n钱少了一半多，但你要的从来不是那一半。\n\n多年后这件事被翻出来，第一个被找去谈话的不是你。你在办公室听着走廊里的脚步声经过你的门口，没有停。" },
     { t:"不签。让它按工业地走完流程", eff:{merit:12,network:-24,risk:-8},
@@ -3087,7 +3145,7 @@ const EVENTS = [
   title:"第一个项目",
   text:s=>`一个做工程的老板托人约你吃饭，第三次你才去。\n\n他要的东西很具体：城北片区那个标段，评审会上有你一票。他没有说「给你多少」，他说的是「按行规，两个点」。\n\n那个标段的盘子不小。他说的「两个点」，折下来是 ${(12*bribeMul(s)).toFixed(0)} 万上下——你需要不吃不喝干${Math.round(12*bribeMul(s)/SALARY[s.rank])}年。\n\n他把茶杯往你这边推了推，说：${RANKS[s.rank]}，这行的规矩就是这样，不是我一个人定的。`,
   opts:[
-    { t:"在评审会上说了那句话", cost:2, eff:{bribe:12,risk:30,network:9},
+    { t:"在评审会上说了那句话", cost:2, eff:{bribe:12,risk:30,network:9,legacy:-3},
       fn:s=>{ s.flags.brokerLvl=1; s.flags.brokerAsked=true; s.flags.brokerYear=s.year; },
       msg:"你说的那句话很短，短到会议纪要里只有半行。\n\n钱是三个月后到的，不是从他手上来的。\n\n到账那天你在办公室坐着，把手机银行打开又关掉，前后看了七次。\n\n那不是你的工资单上会出现的数字。那是另一种东西——你第一次意识到，这个世界上的钱，原来是分种类的。" },
     { t:"帮忙，但一分钱不要", cost:2, eff:{network:16,risk:11,merit:-4},
@@ -3102,10 +3160,10 @@ const EVENTS = [
   title:"他带了个朋友来",
   text:s=>`还是那家馆子，这次多了一个人。\n\n新来的这位做的盘子更大，说话也更直接：「上次那个事办得漂亮。我这边有三个项目，一个比一个大。」\n\n他报了个数。那个数字后面的零，你数了两遍。\n\n${s.flags.kidIntl ? "你想起下学期的学费还没交。" : s.money < 60 ? "你想起你账上还剩不到六十万。" : "你不缺这笔钱。这让你更难解释自己为什么还在听。"}`,
   opts:[
-    { t:"三个都接了", cost:3, eff:{bribe:26,risk:36,network:14},
+    { t:"三个都接了", cost:3, eff:{bribe:26,risk:36,network:14,legacy:-3},
       fn:s=>{ s.flags.brokerLvl=2;
         s.pendMsg="三个项目跨了两年，你一共说了不到十句话。\n\n钱不再是分两笔到账了，是一个人拎着东西到你家楼下，打电话让你下来拿。\n\n你下楼的时候特意换了双旧鞋。你也不知道为什么要换鞋。\n\n那年你换了车、还清了房贷、给你妈换了个带电梯的房子。你母亲问钱哪来的，你说单位效益好。\n\n她信了。她那么容易就信了。"; } },
-    { t:"只接一个，试试水", cost:2, eff:{bribe:11,risk:22},
+    { t:"只接一个，试试水", cost:2, eff:{bribe:11,risk:22,legacy:-3},
       fn:s=>{ s.flags.brokerLvl=1; s.flags.brokerSlow=true;
         s.pendMsg="你只点了头一次，另外两个推给了别人。\n\n他没有不高兴，反而说：邢处谨慎，这是好事。\n\n后来你才明白这句话的意思——他夸的不是你的人品，是你还能用多久。"; } },
     { t:"到此为止", cost:1, eff:{network:-18,risk:-9},
@@ -3126,7 +3184,7 @@ const EVENTS = [
       fn:s=>{ s.flags.brokerLvl=1;
         s.pendMsg="你在一个不大不小的场合把话说重了，重到当场有人脸色变了。\n\n话传得很快。此后确实没有人再用你的名字。\n\n也没有人再在任何场合替你说话。你把一扇门关上了，关的时候没想清楚门后面还连着什么。"; } },
     { t:"把这笔顾问费交了，同时打报告", cost:3, eff:{risk:-30,merit:14,network:-30},
-      fn:s=>{ s.flags.brokerLvl=0; s.flags.confessed=true; s.flags.brokerOut=true;
+      fn:s=>{ s.flags.brokerLvl=0; s.flags.confessed=true; s.legacy=(s.legacy||0)+7; s.flags.brokerOut=true;
         s.pendMsg="你交了钱，写了一份很长的情况说明，把前面那两次也一并写了进去。\n\n组织上给了处分，不重。真正重的是之后那些年——每一次有你的名字出现在讨论里，都会有人补一句「他那个事」。\n\n你干净了。你也就到这儿了。"; } },
   ]},
 
@@ -3216,7 +3274,7 @@ const EVENTS = [
       fn:s=>{ s.flags.xinlaiAsked=true; },
       msg:"{TA}「哦」了一声，走了。\n\n后来{TA}还是把稿子改得很好，只是不再送到你办公室，而是发在系统里。\n\n三年后{TA}调走了，去了一个更好的位置。走之前给你发了条消息：谢谢您那几年教我写材料。\n\n你回了两个字：应该。你盯着屏幕看了很久才发出去。" },
     { t:"用心带{TA子}，但守着那条线", cost:2, eff:{merit:9,network:11},
-      fn:s=>{ s.flags.xinlaiAsked=true; s.flags.protege=true;
+      fn:s=>{ s.flags.xinlaiAsked=true; s.flags.protege=true; s.legacy=(s.legacy||0)+8;
         s.pendMsg="你把{TA}当成正经的苗子来带：带{TA}去见人、把好的机会给{TA}、也当众骂过{TA}两次。\n\n有一次别人开你们的玩笑，你当场把脸沉下来了，桌上就没人再提。\n\n很多年后{TA}已经是正处，在一个你需要人帮忙的场合替你说了一句话。那句话不重，但说得很及时。\n\n【多了一个真正靠得住的人】"; } },
     { t:"没让{TA子}走", cost:1, eff:{risk:32,family:-16,network:7,merit:-4},
       fn:s=>{ s.flags.affair = true; s.flags.affairYear = s.year; s.flags.affairOffice = true;
@@ -3269,7 +3327,7 @@ const EVENTS = [
         else { s.risk = cl(s.risk + 6, 0, 140);
           s.pendMsg="你没有回。那个号码后来再没响过。\n\n你不知道是对方放弃了，还是{TA}也怕，还是{TA}只是在等一个更值钱的时候。\n\n这件事没有结果，所以它永远没有结束。接下来的很多年，每次手机响起陌生号码，你的心都要沉一下。\n\n【风险 +6 · 但这件事一直悬着】"; } } },
     { t:"自己报告组织", cost:4, eff:{merit:-24,network:-30,family:-18,health:-11},
-      fn:s=>{ s.flags.photoAsked=true; s.flags.confessed=true;
+      fn:s=>{ s.flags.photoAsked=true; s.flags.confessed=true; s.legacy=(s.legacy||0)+7;
         s.risk = cl(s.risk*0.35, 0, 140);
         s.pendMsg="你把照片、号码、和整件事的来龙去脉，写成材料交了上去。\n\n敲诈的人抓了，判了四年。\n\n你受了处分，级别没动，但从此在这个系统里，你成了一个「有故事的人」。有些会你还去，有些名单上你不再出现。\n\n你后来跟人说过一句话：那天交材料的时候，我知道我把自己毁了一半，可我留下了另一半。\n\n【风险大幅下降 · 前程受损 · 但把柄不在别人手里了】"; } },
   ]},
@@ -3295,7 +3353,7 @@ const EVENTS = [
   text:`调令下来了：平级，异地，三百二十公里。\n\n你在这儿经营了六年。你知道哪个科长办事拖、哪个副职心里有想法、哪家饭店的包厢隔音好。\n\n到了那边，这些全部归零。`,
   opts:[
     { t:"去。这是规矩", cost:2, eff:{merit:14,family:-18,health:-7},
-      fn:s=>{ s.network = cl(s.network*0.55); s.flags.rotated=true;
+      fn:s=>{ s.network = clc(s.network*0.55); s.flags.rotated=true;
         s.pendMsg="你一个人去的，租了个五十平的房子，周末回来。后来变成两周回来一次，再后来变成一个月。\n\n新地方的人对你很客气。客气了整整两年，才有人开始跟你说真话。\n\n【人脉大幅折损 · 但异地经历是硬通货】"; } },
     { t:"托关系留下来", cost:3, eff:{network:-16,risk:16,merit:-9},
       msg:"你找了两个人，说了很多话，最后留下来了，理由是「工作需要连续性」。\n\n你确实留下了。你也确实在原地又待了六年。\n\n组织部那本册子上，你的名字后面从此有了一个小小的记号。没有人告诉你那是什么意思，但你后来自己看出来了。" },
@@ -3333,7 +3391,7 @@ const EVENTS = [
   text:`供暖停了第四天。你在指挥部待了七十个小时，靠泡面和劣质速溶咖啡撑着。\n\n凌晨三点有人来报：城北老旧小区有位独居老人，敲门没人应。\n\n你抓起大衣就往外走。到楼下才发现自己没戴手套，手已经不听使唤了。`,
   opts:[
     { t:"跟着去", cost:3, eff:{merit:16,health:-16,network:9},
-      fn:s=>{ s.flags.crisis=true;
+      fn:s=>{ s.flags.crisis=true; s.legacy=(s.legacy||0)+9;
         s.pendMsg="老人没事，只是睡得沉，屋里冷得像冰窖。你们把{TA}接到了安置点。\n\n临走时{TA}拉着你的手说了句什么，你没听清，因为你的耳朵已经冻麻了。\n\n那年春天你落下了一个毛病：一到冬天关节就疼。\n\n【扛过大事 · 但身体留下了东西】"; } },
     { t:"让下面的人去，你在指挥部盯全局", cost:2, eff:{merit:11,network:-5},
       msg:"你在指挥部盯了一夜，调度了十七个点位，没有出一起事故。\n\n这是对的。这个位置上的人本来就该在指挥部。\n\n只是后来看新闻，画面里冲在最前面的是别人。你把电视关了。" },
@@ -3890,7 +3948,7 @@ const EVENTS = [
         s.risk = cl(s.risk * 0.45, 0, 140);
         s.pendMsg = "你用了三个月，把能退的一样一样退回去，把能断的关系一条一条断掉。\n\n有人不肯收，说这不合规矩。你说我知道，你收下。\n\n退完那天你在办公室坐到很晚，第一次觉得这间屋子有点空。\n\n【退出 " + yuan(back,0) + " · 风险大幅下降】"; } },
     { t:"把该说的先说了，主动一点", cost:4, eff:{merit:-13,network:-20,health:-6},
-      fn:s=>{ s.risk = cl(s.risk * 0.28, 0, 140); s.flags.confessed = true;
+      fn:s=>{ s.risk = cl(s.risk * 0.28, 0, 140); s.flags.confessed = true; s.legacy=(s.legacy||0)+7;
         s.pendMsg = "你在巡视组进驻之前，自己去说了。\n\n谈了两次，写了一份东西。处理不重，但档案里从此有了一页。\n\n巡视组来的时候，你是这栋楼里最不紧张的人之一。\n\n【风险大幅下降 · 档案里留下一页 · 但巡视时这一页很管用】"; } },
     { t:"花钱找人，把几件事抹平", cost:2,
       cond:s=>s.money >= 60,
@@ -3911,7 +3969,7 @@ const EVENTS = [
   text:`科室分来一个应届生，二十三岁，坐在你当年那张桌子上。\n\n他第一天穿了西装，第二天就不穿了。第三天他问你：这份材料要写多少字？\n\n你想了想，说：写到说清楚为止。\n\n他愣了一下，显然这不是他想要的答案。`,
   opts:[
     { t:"手把手带，改稿改到深夜", cost:2, eff:{merit:6,network:9,health:-6},
-      fn:s=>{ s.flags.firstSub=true; s.flags.taughtOne=true;
+      fn:s=>{ s.flags.firstSub=true; s.flags.taughtOne=true; s.legacy=(s.legacy||0)+7;
         s.pendMsg="你陪他改了七稿，每一稿都告诉他为什么改。\n\n他后来写得很好，好到第二年就被借调走了。\n\n走之前他请你吃饭，说了一句：我以后带人也这么带。\n\n很多年后你听说他真的这么带人。这大概是你这辈子做过的最划算的一笔投资。"; } },
     { t:"给个模板，让他自己琢磨", eff:{merit:5,health:3,network:-3},
       fn:s=>{ s.flags.firstSub=true; },
@@ -4063,9 +4121,9 @@ const EVENTS = [
     return `你现在有五块。\n\n有一块你只在特定场合戴，那个场合里的人都懂。有三块你从来没戴出去过。还有一块，你戴了两年才知道它值多少。\n\n知道之后你就不戴了。`;
   },
   opts:[
-    { t:"收下，但只在私下戴", eff:{bribe:1.4,risk:22,health:3},
+    { t:"收下，但只在私下戴", eff:{bribe:1.4,risk:22,health:3,legacy:-3},
       msg:"你把它锁在抽屉里，只在一些很小的场合戴。\n\n有一次开会你忘了换，坐在你斜对面的那位盯着你的手腕看了大概两秒。\n\n就两秒。那两秒之后你回办公室的第一件事，是把它摘下来。" },
-    { t:"收下，堂堂正正戴着", eff:{bribe:1.4,risk:38,network:9},
+    { t:"收下，堂堂正正戴着", eff:{bribe:1.4,risk:38,network:9,legacy:-3},
       fn:s=>{ s.flags.showOff = true; },
       msg:"你戴着它开了很多次会。\n\n有人夸过，有人问过价，你都笑笑说朋友送的。\n\n三年后网上有一张你的工作照，评论区第一条不是在说你讲的内容。那条评论被删了，但截图还在。\n\n【显眼是一种成本 · 你的风险从此比别人涨得快】" },
     { t:"退回去，一块表不值得", eff:{risk:-8,network:-9,merit:4},
@@ -4154,10 +4212,10 @@ const EVENTS = [
     return `这些名义现在有六七种了。\n\n你自己都记不清哪一笔是哪一种。每年报税的时候，会有人把材料整理好送来，你只需要签字。\n\n签字的时候你从来不看内容。你不看，是因为你知道自己一看就会想别的。`;
   },
   opts:[
-    { t:"照办。这样确实干净", eff:{bribe:6,risk:20},
+    { t:"照办。这样确实干净", eff:{bribe:6,risk:20,legacy:-3},
       fn:s=>{ s.flags.consultFee = true;
         s.pendMsg="从那以后，进来的钱都有名目。\n\n表面上你是一个偶尔讲讲课、写写文章的人。\n\n只有一件事没变：那些请你讲课的单位，全都在你分管的范围里。这件事在纸面上完全合规，在任何一个懂行的人眼里都不需要解释。"; } },
-    { t:"只留最说得过去的那一两种", cost:2, eff:{bribe:2.4,risk:9,merit:3},
+    { t:"只留最说得过去的那一两种", cost:2, eff:{bribe:2.4,risk:9,merit:3,legacy:-3},
       msg:"你只保留了讲课和稿费，其余的推了。\n\n收入少了七成。\n\n但这两种是真的——你确实讲了课，也确实写了东西。很多年后有人核查这一块，看完就过去了。\n\n你那天晚上想起了自己当年推掉的那些，第一次觉得那不算损失。" },
     { t:"一样不要", eff:{risk:-16,network:-14},
       fn:s=>{ s.flags.brokerLvl = Math.max(0, (s.flags.brokerLvl||0) - 1);
@@ -4187,7 +4245,7 @@ const EVENTS = [
     { t:"让他们重做，但按同样的套路", cost:1, eff:{merit:3,health:-4},
       msg:"你退回去让重做。他们又抄了另一个市的。\n\n这一次好一点，但也只是好一点。\n\n你签了字。签完你在办公室坐了一会儿，忽然想起自己二十几岁的时候，也交过一份从别处抄来的东西，被人退了回来。\n\n那个退你稿子的人，当时说的话你还记得。你今天没有说。" },
     { t:"自己重写一版", cost:4, needAb:58, eff:{merit:18,network:-9,health:-9},
-      fn:s=>{ s.flags.bigwin = true; s.ability = cl2(s.ability + 6);
+      fn:s=>{ s.flags.bigwin = true; s.legacy=(s.legacy||0)+10; s.ability = cl2(s.ability + 6);
         s.pendMsg="你花了一个月，从最底下的数据开始重做。你把这个地方的地形、人口、产业、十年的财政数据全部翻了一遍。\n\n方案交上去的那天，评审会上有位专家问了句：这个是谁做的。\n\n那份方案后来落地了，而且落得住。它成了你履历上真正硬的那一笔——不是因为它漂亮，是因为它对。\n\n【标志性工程 · 能力大幅提升】"; } },
   ]},
 
@@ -4200,7 +4258,7 @@ const EVENTS = [
     { t:"先赶到现场，路上再报", cost:3, eff:{merit:11,health:-11,network:4},
       msg:"你四十分钟后到了现场，衣服穿反了一件。\n\n消防已经控制住了。你在那儿站到天亮，做的最有用的一件事是拍板疏散了最近的两栋楼。\n\n后来查出那两栋楼其实不用疏散。但没有人说你做错了——在那个时间点，你手上没有能让你说「不用」的东西。" },
     { t:"调出这个仓库的备案资料再决定", cost:2, needAb:50, eff:{merit:16,health:-6,network:6},
-      fn:s=>{ s.flags.crisis = true; s.ability = cl2(s.ability + 4);
+      fn:s=>{ s.flags.crisis = true; s.legacy=(s.legacy||0)+9; s.ability = cl2(s.ability + 4);
         s.pendMsg="你让值班室十分钟内调出那个仓库的危化品备案清单和平面图。\n\n看到清单你就知道了：里面存的东西不产生有毒烟气，风向不构成威胁，但西侧有个储罐必须先降温。\n\n你把这句话直接给了现场。\n\n天亮时事情结束了，没有疏散，没有恐慌，没有一个人被从床上叫起来。\n\n这是你这些年做过的最漂亮的一次决策，而它靠的是你知道去查哪一份东西。\n\n【扛过大事 · 能力提升】"; } },
   ]},
 
@@ -4297,7 +4355,7 @@ const EVENTS = [
     { t:"先把人停了，对外通报", cost:2, eff:{merit:6,network:-11,risk:-6},
       msg:"两小时内通报发出去了，措辞标准：已停职，已调查，已道歉。\n\n舆情当天就压下去了。\n\n那个被停职的工作人员三个月后调去了档案室。他没有申诉。事后有人告诉你，那句话之前，对方骂了他四十分钟。\n\n通报里没有这一段。" },
     { t:"先把完整的四十分钟调出来再说", cost:3, needAb:44, eff:{merit:14,network:6,risk:-11},
-      fn:s=>{ s.flags.crisis = true; s.ability = cl2(s.ability + 3);
+      fn:s=>{ s.flags.crisis = true; s.legacy=(s.legacy||0)+9; s.ability = cl2(s.ability + 3);
         s.pendMsg="你顶着压力压了六个小时没有表态，让人把窗口完整录像和叫号记录全部调出来。\n\n完整的四十分钟里，事情是另一个样子。\n\n你把完整录像和一份很克制的说明一起发了出去，同时对那名工作人员的不当用语作了处理。\n\n舆情反转。有媒体用了「难得的坦诚」这个词。\n\n【扛过大事 · 能力提升 · 你保住了一个人】"; } },
     { t:"不回应，等它过去", eff:{merit:-9,risk:16,health:-6},
       msg:"你判断这种事三天就过去了。\n\n它确实三天就过去了。\n\n但那三天里，你们单位的评论区被翻了个底朝天，翻出了另外两件旧事。其中一件是真的。\n\n处理那件旧事花了半年。" },
@@ -4315,7 +4373,7 @@ const EVENTS = [
   },
   opts:[
     { t:"去，能去就去", cost:2, eff:{merit:6,network:9,health:-4},
-      fn:s=>{ s.ability = cl2(s.ability + 6); s.flags.expertPool = true;
+      fn:s=>{ s.ability = cl2(s.ability + 6); s.flags.expertPool = true; s.legacy=(s.legacy||0)+4;
         s.pendMsg="你去了很多次，每次都认真看材料。\n\n你在那些会上认识的人跟饭局上认识的完全不同——他们记住你，是因为你说过的某一句具体的话。\n\n这条线很慢，但它很结实。\n\n【能力提升 · 一条不靠酒桌的人脉】"; } },
     { t:"挂着名，尽量不去", eff:{network:3,health:4},
       msg:"你入了库，但很少去。\n\n三年后有一次年检，你因为参会次数不足被移出了库。\n\n没有任何影响。只是后来有一次省里论证一个跟你有关的项目，专家名单里没有你，最终结论跟你的判断不一样。\n\n你什么也做不了。" },
@@ -4326,7 +4384,7 @@ const EVENTS = [
   text:`党校请你去讲一次课，讲你最熟的那块业务。两个小时，台下是全省来的处级干部。\n\n课酬八百块。\n\n你准备了三个晚上，做了六十七页课件。`,
   opts:[
     { t:"认真讲，把真东西讲出来", cost:2, eff:{merit:9,network:14,health:-4},
-      fn:s=>{ s.ability = cl2(s.ability + 5); s.flags.lecturer = true;
+      fn:s=>{ s.ability = cl2(s.ability + 5); s.flags.lecturer = true; s.legacy=(s.legacy||0)+5;
         s.pendMsg="你讲了两小时零十分钟，超时了。没有一个人提前走。\n\n课后有十几个人围上来加微信，其中三个后来成了你真正的朋友。\n\n那六十七页课件被人翻拍了传出去，第二年在好几个市的内部培训上出现过。\n\n八百块钱的课，给你带来的东西比很多顿饭都多。\n\n【能力提升 · 你的名字开始在业务圈子里被人提起】"; } },
     { t:"照着材料念完就行", eff:{network:4,health:2},
       msg:"你念完了，很规范，没有超时。\n\n课后没有人围上来。\n\n党校后来没有再请过你。这件事本身没有任何损失——只是那个可能性关掉了，你甚至不知道它曾经打开过。" },
@@ -4338,7 +4396,7 @@ const EVENTS = [
   text:s=>`一个烂摊子要人去收：前任出了事，班子空了三个，账目乱成一团。\n\n组织上找了三个人谈，前两个都推了。第三个是你。\n\n谈话的人说得很直白：需要一个经得起查的人。这个位置，别的条件都可以商量，只有这一条不能。`,
   opts:[
     { t:"去", cost:3, eff:{merit:16,health:-9,network:6,family:-7},
-      fn:s=>{ s.flags.crisis = true;
+      fn:s=>{ s.flags.crisis = true; s.legacy=(s.legacy||0)+9;
         s.pendMsg="你去了。前半年基本没有睡过整觉：查账、稳人、跟上上下下解释同一件事三十遍。\n\n一年后局面稳住了。两年后那个单位的考核回到了全市中游。\n\n你在那儿待了四年。走的时候没有人送——因为你去的时候他们就知道你是来收摊子的，不是来交朋友的。\n\n【扛过大事 · 干净本身是一种资历】"; } },
     { t:"推了。这个坑太深", eff:{merit:-7,network:-9,health:6},
       msg:"你说了身体的原因，组织上表示理解。\n\n最后去的是第四个人。他干了三年，干得不比你差。\n\n三年后他提了副厅。这件事你想起来过很多次，每次都告诉自己那是运气。\n\n有一半是运气。另一半不是。" },
@@ -4608,7 +4666,7 @@ const EVENTS = [
       msg:"你一分没少给，发票收据都留着。\n\n但装修队来来往往几十号人，每个人都看见了这个房子长什么样。\n\n有些账不是钱的账。" },
     { t:"砍掉一半，简装", eff:{money:-14,family:-6,risk:-5},
       msg:"你把大理石换成了瓷砖，把定制柜换成了成品。\n\n住进去以后一切照常。来过的同事都说：挺朴素啊。\n\n「朴素」这个词从他们嘴里说出来，是好话。" },
-    { t:"让那位老板「看着办」", eff:{bribe:1.5,risk:31},
+    { t:"让那位老板「看着办」", eff:{bribe:1.5,risk:31,legacy:-3},
       msg:"最后结账他只收了个材料钱。你推了两次，他说都是自己人。\n\n这套房子你住了很多年。每次有人来家里做客夸装修好，你都会含糊地把话岔开。" },
   ]},
 
@@ -4761,10 +4819,10 @@ const EVENTS = [
     { t:"两桌，只请至亲", eff:{family:15,money:-4,network:-9,risk:-11},
       fn:s=>{s.flags.kidWed=true},
       msg:"你提前跟办公室打了招呼：不收礼，不通知。\n\n那天只有十几个人，{子女}和爱人挨桌敬酒，敬到你这儿时说了句谢谢爸。\n\n有几个想来的人没能来，心里有点意见。这点意见你担得起。" },
-    { t:"正常办，来的都是熟人", eff:{family:9,bribe:3.4,network:6,risk:16},
+    { t:"正常办，来的都是熟人", eff:{family:9,bribe:3.4,network:6,risk:16,legacy:-3},
       fn:s=>{s.flags.kidWed=true},
       msg:"三十多桌。礼金你让办公室的人登了记，说以后都要还的。\n\n有些人的礼你根本不认识是谁送的。\n\n那本礼簿你锁在抽屉里，锁了很多年。" },
-    { t:"放开办，这辈子就这一次", eff:{family:11,bribe:11,network:14,risk:36},
+    { t:"放开办，这辈子就这一次", eff:{family:11,bribe:11,network:14,risk:36,legacy:-3},
       fn:s=>{s.flags.kidWed=true},
       msg:"酒店最大的宴会厅，八十多桌。来的人里有一半你叫不出名字。\n\n{子女}后来说：爸，那天我像个道具。\n\n这句话你当时笑着挡过去了。很多年后你还记得。" },
   ]},
@@ -4854,7 +4912,7 @@ const EVENTS = [
         if(score >= 96){
           return topAppointment(s);
         } else {
-          s.flags.topStage=0; s.flags.topStageYear=s.year; s.merit=cl(s.merit-10);
+          s.flags.topStage=0; s.flags.topStageYear=s.year; s.merit = clc(s.merit-10);
           s.pendMsg="两年到了。事情推进了大概六成。\n\n没有人说你失败，材料里写的是「取得阶段性进展」。\n\n这六个字你看了很久。你知道它的意思是：不够。\n\n【最后一步未成】";
         }
       } },
@@ -4885,9 +4943,9 @@ const EVENTS = [
   title:"一幅画",
   text:`有人送来一幅画，说是朋友的旧藏，不值什么钱。\n\n你不懂画。但你知道一件事：真正不值钱的东西，没有人会用两个人抬着送上门。`,
   opts:[
-    { t:"收下，挂在书房", eff:{bribe:7, risk:30},
+    { t:"收下，挂在书房", eff:{bribe:7, risk:30,legacy:-3},
       msg:"它在你书房挂了很多年。来过家里的人偶尔会在它前面站一会儿，说一句「好画」。\n\n你每次都点头。\n\n你到今天也不知道它好在哪儿。" },
-    { t:"收下，但换成一个说不清价钱的形态", cost:2, eff:{bribe:6, risk:15},
+    { t:"收下，但换成一个说不清价钱的形态", cost:2, eff:{bribe:6, risk:15,legacy:-3},
       fn:s=>{ s.flags.inArt = true;
         s.pendMsg = "你没往家里挂。它进了一间恒温的库房，编号入册，登记的名字不是你。\n\n它不产生收益，也不会被冻结，甚至不太算得上钱。\n\n你去看过一次，隔着玻璃站了几分钟就走了。\n\n【换成了别的形态】"; } },
     { t:"退回去", eff:{risk:-9, network:-7, merit:3},
@@ -4898,12 +4956,12 @@ const EVENTS = [
   title:"落　槌",
   text:`一场慈善拍卖，你捐了一幅自己写的字。\n\n起拍价一万。最后落槌，四十八万。\n\n举牌的人你不认识。但他身后坐着的那位，你认识。`,
   opts:[
-    { t:"就当是做了件善事", eff:{bribe:4, risk:22},
+    { t:"就当是做了件善事", eff:{bribe:4, risk:22,legacy:-3},
       fn:s=>{ s.flags.brokerName = true;
         s.pendMsg = "钱进了基金会，票据齐全，流程无懈可击。\n\n从这一年起，你写的字有价了。\n\n有人在你没参加的饭局上用了你的名字，事情办成了。你连那个项目叫什么都不知道。\n\n【一块牌子】"; } },
     { t:"事后打听了那个人是谁", cost:2, eff:{risk:9, network:5},
       msg:"你打听清楚了，然后什么也没做。\n\n知道和不知道之间隔着的不是信息，是责任。\n\n你现在跨过去了。" },
-    { t:"叫停，改成不署名捐一笔", cost:2, eff:{merit:6, network:-8, risk:-9, money:-6},
+    { t:"叫停，改成不署名捐一笔", cost:2, eff:{merit:6, network:-8, risk:-9, money:-6,legacy:5},
       msg:"你让主办方把那幅字撤了，自己匿名捐了一笔。\n\n主办方很为难，说流程已经走了。你说那就重走。\n\n这件事让几个人不高兴。很多年以后，它让另外一些人对你放了心。" },
   ]},
 
@@ -4911,9 +4969,9 @@ const EVENTS = [
   title:"还没公开的那张图",
   text:`规划调整的图在你桌上，还有四个月才公示。\n\n图上有一条线，线的东边和西边，从明年起是两个价钱。\n\n这件事本身不用你做任何决定。你只需要知道它，而你已经知道了。`,
   opts:[
-    { t:"跟一个信得过的人提了半句", eff:{bribe:6, risk:32, network:6},
+    { t:"跟一个信得过的人提了半句", eff:{bribe:6, risk:32, network:6,legacy:-3},
       msg:"你说得非常含糊，含糊到事后回想，那句话可以有三种解释。\n\n三个月后那边的地价开始动。你没有参与任何一笔交易。\n\n可你每次看见那条线，都会想起自己说那半句话时的语气——那个语气不含糊。" },
-    { t:"什么也没说，但让家里人暂缓了一笔买卖", eff:{risk:14, money:9},
+    { t:"什么也没说，但让家里人暂缓了一笔买卖", eff:{risk:14, money:9,legacy:-2},
       msg:"你只跟家里说了四个字：这段别动。\n\n他们照做了，也没问为什么。\n\n这件事的痕迹只有四个字，可这四个字是你说的。" },
     { t:"把图锁进柜子，四个月没再打开", cost:2, eff:{merit:5, risk:-10, health:-3},
       msg:"那四个月里有五个人来找过你，话题都绕在附近。\n\n你一次也没有接。\n\n公示那天早上，你把柜子打开，把图拿出来交上去。锁是你自己拧开的，你听见了那一声响。" },
@@ -4928,8 +4986,8 @@ const EVENTS = [
         s.pendMsg = "分差很小，小到任何一份复核材料都看不出问题。\n\n他进来了，后来干得不错，见了你会主动叫人。\n\n这不影响那份档案一直躺在那里。编制是有档案的，档案会一直等着某天被人从头翻一遍。\n\n【一份档案】"; } },
     { t:"照实打分。他自己也够线了", eff:{network:4, merit:3},
       msg:"你按自己的判断打了分。他排第七，进了。\n\n打招呼的那个人后来专门来谢过你。\n\n你没有解释。有些澄清一旦说出口，就变成了另一种邀功。" },
-    { t:"面试前主动申请了回避", cost:2, eff:{merit:7, network:-11, risk:-12},
-      fn:s=>{ if(!s.flags.recused){ s.flags.recused = true; s.flags.recusedYear = s.year; } },
+    { t:"面试前主动申请了回避", cost:2, eff:{merit:7, network:-11, risk:-12,legacy:5},
+      fn:s=>{ if(!s.flags.recused){ s.flags.recused = true; s.legacy=(s.legacy||0)+6; s.flags.recusedYear = s.year; } },
       msg:"你写了一份情况说明，进了档案。\n\n有人说你小题大做。\n\n很多年以后，考察组把那一页翻出来看了很久。看完，问的问题少了三个。" },
   ]},
 
@@ -4937,7 +4995,7 @@ const EVENTS = [
   title:"名誉会长",
   text:`一个商会请你出任名誉会长。不用坐班，不用管事，一年出席两次活动。\n\n他们说这是「支持地方经济」。这句话没有错。\n\n你翻了翻会员名册，其中十一家的项目，签字的人是你。`,
   opts:[
-    { t:"应下来", eff:{bribe:3, network:14, risk:26},
+    { t:"应下来", eff:{bribe:3, network:14, risk:26,legacy:-3},
       msg:"你一年去两次，讲二十分钟，从不留下吃饭。\n\n可你的名字印在了他们所有的宣传册上，印了九年。\n\n后来有人跟你说，就凭这个名字，他们谈成过好几件事。你问是哪几件，对方笑了笑，没说。" },
     { t:"挂个更虚的头衔，一次也不出席", eff:{network:7, risk:11},
       msg:"你只同意挂「顾问」，条件是不参加任何活动。\n\n他们照办了，还是把你的名字印了上去。\n\n名字这个东西，一旦借出去，就不太由你决定它出现在哪儿。" },
@@ -4949,7 +5007,7 @@ const EVENTS = [
   title:"三年前的一件小事",
   text:`一个你几乎已经忘了的人来看你。\n\n三年前他有件事卡住了，你顺手推了一把——对你来说是一句话的事，你当时甚至没觉得这算帮忙。\n\n他这次来，带的东西不是一句话的分量。`,
   opts:[
-    { t:"收下。这是他自己要还的", eff:{bribe:5, risk:28, network:6},
+    { t:"收下。这是他自己要还的", eff:{bribe:5, risk:28, network:6,legacy:-3},
       msg:"他走以后你在办公室坐了一会儿。\n\n你想起三年前那句话确实是顺手说的。\n\n可现在东西在这儿了。顺手和不顺手，从这一刻起没有区别。" },
     { t:"只留下他带的茶，其余退了", cost:2, eff:{network:5, risk:6},
       msg:"你留了两罐茶，其余的让他原样带走。\n\n他有点为难，说这样显得他小气。你说那就下次带好一点的茶。\n\n这句话说得很轻松。轻松到你后来自己都没在意，你其实答应了「下次」。" },
@@ -4961,11 +5019,11 @@ const EVENTS = [
   title:"专家名单",
   text:`一个大项目要评审，专家从库里随机抽。\n\n抽之前，名单的范围是你划的。\n\n随机是真的随机。这一点谁也挑不出毛病。`,
   opts:[
-    { t:"把范围划得刚好", eff:{bribe:8, risk:34, merit:3},
+    { t:"把范围划得刚好", eff:{bribe:8, risk:34, merit:3,legacy:-3},
       msg:"抽签那天你不在场，全程录像，公证员签了字。\n\n结果一点问题都没有。\n\n这件事你办得很干净。干净到很多年以后你自己回想，都要停一下才想得起来问题出在哪一步。" },
-    { t:"范围划宽，但事前跟评委打了个招呼", eff:{bribe:4, risk:22, network:8},
+    { t:"范围划宽，但事前跟评委打了个招呼", eff:{bribe:4, risk:22, network:8,legacy:-3},
       msg:"你说的话很轻：这个项目地方上很重视。\n\n就这一句。\n\n后来有人告诉你，那句话在会场上被复述了三次，每复述一次就重一点。" },
-    { t:"整个流程全部交出去，自己不碰", cost:3, eff:{merit:8, network:-10, risk:-13},
+    { t:"整个流程全部交出去，自己不碰", cost:3, eff:{merit:8, network:-10, risk:-13,legacy:6},
       msg:"你把划范围这件事也交给了另一个部门，自己签了个字就完了。\n\n评审结果出来，中的不是本地企业。有人在会上说了几句难听的。\n\n你没有解释。你只是在心里记下：这一年，这件事，你是干净的。" },
   ]},
 
@@ -5163,7 +5221,7 @@ const EVENTS = [
       fn:s=>{ const g = s.grey||0;
         s.grey = 0; s.money = Math.max(0, s.money - g*0.9);
         s.risk = cl(s.risk*0.25, 0, 140);
-        s.flags.confessed = true;
+        s.flags.confessed = true; s.legacy=(s.legacy||0)+7;
         s.pendMsg = "你自己走进了那栋楼。\n\n说了两天。上交的部分接近全部。处分是有的，位置也动了。\n\n从那栋楼里出来的下午下着小雨，你没有打伞。\n\n你想起很多年前你在公告栏前面看自己名字的那个下午。那天也没有伞。\n\n【交代记录 · 你把命换回来了，代价是别的东西】"; } },
     { t:"什么也不做。这些年不都过来了吗", eff:{risk:5, health:-4},
       msg:"你把纸烧了，接着上班。\n\n这个决定你后来复盘过很多次。每一次的结论都一样：那天你不是没想明白，你是舍不得。\n\n舍不得这三个字，很多年后被写进了别人的判决书里。" },
@@ -5413,7 +5471,7 @@ const EVENTS = [
   title:"优秀的名额",
   text:`年度考核，处里有一个优秀名额。\n\n按贡献应该是你。按轮流应该是老陈——他明年就到线了，这可能是最后一次。`,
   opts:[
-    { t:"让给老陈", cost:1, eff:{network:9,merit:-3,family:-2},
+    { t:"让给老陈", cost:1, eff:{network:9,merit:-3,family:-2,legacy:4},
       msg:"你在会上主动说了。老陈当场没说什么，散会后在楼道里握了握你的手。\n\n那年他退了。退之前他跟处长说了一句关于你的话。\n\n那句话你两年后才辗转听到。它值不止一个优秀。" },
     { t:"该是谁的就是谁的", eff:{merit:6,network:-6},
       msg:"你拿了。名单公布那天办公室里很正常，正常得有点过分。\n\n老陈第二年退休，欢送会上你去了，坐在最后一排。\n\n他讲话的时候提到了很多人的名字。没有你。" },
@@ -5441,7 +5499,7 @@ const EVENTS = [
   opts:[
     { t:"换个口径，算成九成一", cost:1, eff:{merit:6,risk:8},
       msg:"你换了分母。数字漂亮了，注释写了一行小字。\n\n没有人看那行小字。\n\n三年后有人拿这个数据做规划，规划出了问题。追溯的时候查到了这份材料，也查到了那行小字。你没事，因为你写了。" },
-    { t:"照实报七成八，附上原因", cost:3, eff:{merit:-3,network:-4},
+    { t:"照实报七成八，附上原因", cost:3, eff:{merit:-3,network:-4,legacy:5},
       msg:"你写了一页半的说明，讲清楚为什么是七成八。\n\n报上去以后没有回音。年底通报的时候，你们排在倒数第四。\n\n处长没有批评你。他只是从那以后，报数的材料不再让你经手。" },
     { t:"报八成五，一个折中的数", cost:2, eff:{merit:3,risk:4},
       msg:"你把两种算法平均了一下。\n\n这个数字很安全：不显眼，也不难看。\n\n你后来发现，这栋楼里绝大部分数字都是这么来的。" },
@@ -5463,7 +5521,7 @@ const EVENTS = [
   title:"门口那个人",
   text:`一个人在单位门口站了三天。他要反映的事横跨十四年，涉及三个部门，其中两个已经撤销了。\n\n他的材料有两指厚，字很工整。`,
   opts:[
-    { t:"把他请进来，听完了", cost:3, eff:{merit:6,health:-5,network:-2},
+    { t:"把他请进来，听完了", cost:3, eff:{merit:6,health:-5,network:-2,legacy:4},
       msg:"你听了两个小时四十分钟，中间倒了三次水。\n\n他的事你解决不了，一件也解决不了。\n\n他走的时候说了句「谢谢你听我说完」。这句话你记了很多年，因为它让你难受——他谢的不是你办了事。" },
     { t:"按程序转到该管的部门", cost:1, eff:{merit:3},
       msg:"你填了单子，转了出去。程序上无懈可击。\n\n两个月后他又来了，材料厚了一指。\n\n你还是按程序转了出去。这一次你没有出去看他。" },
@@ -5535,7 +5593,7 @@ const EVENTS = [
   title:"柜子最下层",
   text:`搬办公室，整理柜子，你在最下层翻出一摞很旧的材料。\n\n是十几年前的，签字的人有一半已经不在这栋楼里了。\n\n其中一份，签字那一栏是空的。`,
   opts:[
-    { t:"整理归档，那份空的单独放出来上报", cost:2, eff:{merit:5,network:-3,risk:-5},
+    { t:"整理归档，那份空的单独放出来上报", cost:2, eff:{merit:5,network:-3,risk:-5,legacy:4},
       msg:"你写了一张便签夹在上面，报了上去。\n\n后来这件事没有下文，材料也没有退回来。\n\n你只是觉得，一份没人签字的东西不该继续躺在柜子里。仅此而已。" },
     { t:"全部照原样封箱入库", cost:1, eff:{merit:2},
       msg:"你把它们原样装箱，贴了标签，推进了档案室。\n\n那间档案室你后来又进去过两次，都是为了别的事。\n\n那个箱子应该还在。" },
@@ -5644,16 +5702,16 @@ const EVENTS = [
       : `一次跨部门的协调会，对面坐着的处长有点面熟。\n\n中场休息的时候他主动过来，说了一句：您可能不记得了，我以前在您手下待过半年。\n\n你说记得。你其实不记得。`),
   opts:[
     { t:"照常公事公办", cost:2, eff:{merit:4},
-      fn:s=>{ if(s.flags.youngGood){ s.network=cl(s.network+9); s.risk=cl(s.risk-8,0,140);
+      fn:s=>{ if(s.flags.youngGood){ s.network = clc(s.network+9); s.risk=cl(s.risk-8,0,140);
           s.pendMsg="谈话按流程走完，一句多余的话也没有。\n\n他临走时收拾材料，很随意地说了一句：当年那份稿子，您给我讲的那三点，我到现在还在用。\n\n然后他走了。\n\n那次考察，你这一部分过得很顺。顺到你事后想了很久，也想不出是哪一句话起了作用。"; }
-        else if(s.flags.youngCold){ s.merit=cl(s.merit-6); s.health=cl(s.health-4);
+        else if(s.flags.youngCold){ s.merit = clc(s.merit-6); s.health=cl(s.health-4);
           s.pendMsg="流程一步没少，材料一份没落，时限一天没超。\n\n每一个环节都合规，每一个环节都用满了时限。\n\n事情办完，比正常慢了四个月。没有人能说什么，因为确实每一步都合规。"; }
-        else { s.network=cl(s.network+4);
+        else { s.network = clc(s.network+4);
           s.pendMsg="会开得很平常，事情办得也很平常。\n\n散会后他跟你打了个招呼就走了。\n\n你回办公室的路上试着回忆了一下那半年，什么也没想起来。"; } } },
     { t:"会后单独说两句", cost:2, eff:{network:6},
-      fn:s=>{ if(s.flags.youngCold){ s.network=cl(s.network-4);
+      fn:s=>{ if(s.flags.youngCold){ s.network = clc(s.network-4);
           s.pendMsg="你找了个机会想聊几句当年的事。\n\n他很客气，客气地把话接了过去，然后客气地换了个话题。\n\n你说到一半就停了。有些事过了十五年，已经不是道歉能解决的了——它已经不重要了，这才是最难受的地方。"; }
-        else { s.network=cl(s.network+8);
+        else { s.network = clc(s.network+8);
           s.pendMsg="你们在楼下聊了二十分钟，聊的都是当年的事：谁在哪个位置，哪份稿子被骂得最惨。\n\n他笑起来的时候还是当年那个样子。\n\n临走他说：那时候没人愿意管我。\n\n你没接这句话。你自己也不确定，当年那两个小时你是不是随手给的。"; } } },
   ]},
 
@@ -5698,7 +5756,7 @@ const EVENTS = [
   title:"三号字",
   text:`一份文件退回来了，附了一句意见。\n\n意见不是关于内容的。是关于正文的字号、行距、以及标题和正文之间空了几行。\n\n内容一个字没提。`,
   opts:[
-    { t:"照改，还顺手做了一份格式规范发给全处", cost:2, eff:{merit:5,network:4},
+    { t:"照改，还顺手做了一份格式规范发给全处", cost:2, eff:{merit:5,network:4,legacy:3},
       msg:"你做了一页纸的对照表，什么标题几号字，一目了然。\n\n这份表后来在这栋楼里传了很多年，传到别的局去了。\n\n你这辈子流传最广的作品，是一张格式对照表。" },
     { t:"改了，心里骂了一句", cost:1, eff:{merit:3,health:-2},
       msg:"你改完只用了四分钟。\n\n那四分钟你一直在想：这四分钟和刚才写内容的四个小时，在这栋楼里是等价的。\n\n后来你不这么想了。不是想通了，是习惯了。" },
@@ -6049,7 +6107,7 @@ const EVENTS = [
       msg:"你把三行事拆成了六个部分，每部分加上背景、过程和体会。\n\n交上去以后没有任何反馈。\n\n这份周报你写了七年，每周一份，加起来三十多万字。没有一个字被人引用过。" },
     { t:"写了三行，交了", eff:{merit:-3,network:-2,health:3},
       msg:"你交了三行。\n\n周一被叫去谈了话，说的不是内容，是态度。\n\n从那以后你也写八百字了。你写的时候心里很清楚这是为什么，这一点让你比其他人难受一些。" },
-    { t:"做了个模板，以后往里填", cost:2, eff:{merit:4,network:4},
+    { t:"做了个模板，以后往里填", cost:2, eff:{merit:4,network:4,legacy:3},
       msg:"你花了一个下午做了个填空式的模板，五个部分，改几个词就能用。\n\n后来这个模板在处里传开了。\n\n这大概是你二十几岁做过的最有价值的一件事，虽然它的价值是帮所有人更快地完成一件没有价值的事。" },
   ]},
 
@@ -6227,7 +6285,7 @@ const EVENTS = [
   opts:[
     { t:"最好看的那条", cost:2, eff:{merit:5,network:6,risk:8},
       msg:"参观点位打磨了两个星期，现场很完美。\n\n带队的那位在总结时说了几句好话。\n\n三个月后另一个部门来暗访，去的是别的地方。反馈意见里有一句：与调研所见有出入。" },
-    { t:"最真实的那条", cost:3, eff:{merit:8,network:-6,health:-4},
+    { t:"最真实的那条", cost:3, eff:{merit:8,network:-6,health:-4,legacy:6},
       msg:"你带他们去了两个还没解决的点。\n\n带队的在现场问了很多问题，你答了很多个「还没做到」。\n\n回去以后你们要了一笔专项资金，批下来了。有人说你胆子大，也有人说你会来事。你自己知道你只是不想再演一遍。" },
     { t:"最省事的那条", eff:{merit:2,health:4,network:3},
       msg:"半天参观，半天座谈，一天半压缩成了一天。\n\n所有人都轻松。\n\n这次调研没有留下任何东西：没有问题，也没有资金。" },
@@ -6250,7 +6308,7 @@ const EVENTS = [
   title:"下面报上来的数",
   text:`一个县报上来的完成情况是百分之一百零三。\n\n你去年在那个县待过两天。你知道那个数字是怎么来的。\n\n现在要你签字上报。`,
   opts:[
-    { t:"打回去重核", cost:3, eff:{merit:6,network:-8,risk:-8},
+    { t:"打回去重核", cost:3, eff:{merit:6,network:-8,risk:-8,legacy:6},
       msg:"你把材料退了，还派人下去核了一周。\n\n重报上来是百分之八十七。\n\n那个县的人此后见了你都很客气。客气得让你知道，你在他们那儿已经是另一类人了。" },
     { t:"签了。全省都是这么报的", eff:{merit:3,risk:14},
       msg:"你签了。全省的数据汇总起来很好看。\n\n第二年基数抬高了，任务也跟着抬高了。第三年更高。\n\n到第四年，那个县的人来找你，说实在报不上去了。你说我知道。" },
@@ -6310,9 +6368,9 @@ const EVENTS = [
   title:"一起事故",
   text:`你分管的领域出了一起事故。不算大，但有人受伤了。\n\n现在是凌晨一点二十，你在去现场的车上。\n\n你需要在到达之前想清楚第一句话说什么。`,
   opts:[
-    { t:"先去医院，别的都往后放", cost:3, eff:{merit:8,health:-6,network:4},
+    { t:"先去医院，别的都往后放", cost:3, eff:{merit:8,health:-6,network:4,legacy:6},
       msg:"你到医院的时候是凌晨两点四十。伤者家属在走廊里坐着。\n\n你什么也没解释，先问了病情，然后坐下来陪着等。\n\n天亮之前，家属的情绪稳住了。这件事最后处理得很平稳。有人说你处置得当。你自己知道，你那天什么方法也没用。" },
-    { t:"先到现场，把情况搞清楚", cost:3, eff:{merit:6,risk:-6,health:-5},
+    { t:"先到现场，把情况搞清楚", cost:3, eff:{merit:6,risk:-6,health:-5,legacy:6},
       msg:"你在现场待到早上六点，把每个环节都过了一遍。\n\n七点钟你已经能完整说清楚发生了什么。\n\n上午的通报是你亲自定的稿，一个字没改就发了。清楚是有力量的——这一次你亲身验证了。" },
     { t:"先开会，统一口径", cost:2, eff:{merit:2,risk:12,network:5},
       msg:"你在指挥部开了一个半小时的会，把口径定了下来。\n\n口径很严密。严密到后来记者问了一个不在口径里的问题，回答的人卡了七秒。\n\n那七秒被剪出来传了很久。" },
@@ -6380,7 +6438,7 @@ const EVENTS = [
   title:"这笔钱批不下来",
   text:`一件早就定了的事，卡在了钱上。\n\n批复上写着「统筹考虑，暂缓安排」。\n\n下面已经开工了，工人的工资是上个月的。`,
   opts:[
-    { t:"跑了七趟财政", cost:4, eff:{merit:8,health:-7,network:5},
+    { t:"跑了七趟财政", cost:4, eff:{merit:8,health:-7,network:5,legacy:6},
       msg:"你跑了七趟，每一趟带一份新材料。\n\n第七趟那天对方说了句：行了，就冲你这七趟。\n\n钱下来了，比原计划少了三成。工人的工资发了。你回来的路上在车里坐了十分钟。" },
     { t:"先从别的项目挪一点周转", cost:3, eff:{merit:4,risk:20},
       msg:"你调剂了一笔，把眼前的窟窿堵上了。\n\n这笔调剂在账上是有依据的，依据写得很勉强。\n\n三年后有人来核账。核到那一笔，问了三个问题。你答了三个。事情过去了。" },
@@ -6396,7 +6454,7 @@ const EVENTS = [
       msg:"完整版发出去以后，热度掉得很快。\n\n但完整版的播放量只有那十四秒的三十分之一。\n\n你从这件事里学到的东西比任何一次培训都多：澄清永远追不上，能做的只是让它早一点结束。" },
     { t:"什么也不说，让它自己过去", eff:{risk:16,merit:-4,health:-4},
       msg:"两个星期后确实没人再提了。\n\n但从那以后你在任何有摄像头的场合都不再说完整的句子。\n\n你说话变得很稳，也很没有意思。下面的人后来说你「越来越像领导了」。" },
-    { t:"去现场把那件事真正解决掉", cost:4, eff:{merit:9,risk:-12,health:-6},
+    { t:"去现场把那件事真正解决掉", cost:4, eff:{merit:9,risk:-12,health:-6,legacy:8},
       msg:"你没有回应任何一条评论。你回了那个现场，用了六天把那件事办完了。\n\n办完之后当地有人自己发了视频。\n\n那条视频的播放量不高。但那件事从此再没有人提起过。" },
   ]},
 
@@ -6429,7 +6487,7 @@ const EVENTS = [
   title:"上一任签的那些",
   text:`你接手以后翻账，翻出一批协议。\n\n每一份单独看都合规，加起来是一个你不敢说出口的数字。\n\n签字的人已经退休两年了。`,
   opts:[
-    { t:"全部如实上报", cost:4, eff:{merit:8,network:-12,risk:-11,health:-5},
+    { t:"全部如实上报", cost:4, eff:{merit:8,network:-12,risk:-11,health:-5,legacy:8},
       msg:"你写了一份四十页的报告。\n\n报上去以后来了工作组，待了两个月。\n\n那位退休的老领导给你打过一个电话。电话里他说了一句：小同志，你做得对。然后就挂了。\n\n你不知道那句话是不是真心的。" },
     { t:"分年度慢慢化解，不惊动", cost:4, eff:{merit:5,risk:14,health:-6},
       msg:"你定了个五年的计划，一年消化一部分。\n\n五年后消化了七成。\n\n你调走那年，把剩下的三成和一份说明交给了继任者。他看完那份说明，抬头看了你一眼。\n\n那一眼你太熟悉了。三年前你也是这么看着前任留下的东西的。" },
@@ -6441,7 +6499,7 @@ const EVENTS = [
   title:"撤　并",
   text:`一所小学要撤了。全校十九个学生，四个老师。\n\n方案很清楚：并到二十六公里外的中心校，安排校车。\n\n方案上有一行字：无重大稳定风险。`,
   opts:[
-    { t:"自己去了一趟", cost:3, eff:{merit:7,health:-4,family:-2},
+    { t:"自己去了一趟", cost:3, eff:{merit:7,health:-4,family:-2,legacy:6},
       msg:"你去了。学校门口的水泥地上画着褪色的跳房子格子。\n\n校长跟你说，有三个孩子住得更远，校车也接不到。\n\n你回来改了方案，给那三个加了寄宿补助。\n\n这三个人的事没有写进任何总结。" },
     { t:"照方案办", eff:{merit:4,network:3},
       msg:"撤并很顺利，没有出任何问题。\n\n两年后有人做过一个统计：那批孩子里有四个后来没有继续上学。\n\n这个统计没有公开。你是在一个内部材料里看到的。" },
@@ -6580,7 +6638,7 @@ const EVENTS = [
       fn:s=>{ s.flags.zhouCup = true;
         s.pendMsg = "你把它洗干净，放进了自己的柜子。\n\n后来有新来的问起窗台上原来那个缸子，办公室里已经没有人记得了。\n\n【你替一个人留下了一样东西】"; } },
     { t:"去他家里坐了一下午", cost:2, eff:{network:7,health:-2},
-      fn:s=>{ s.ability += 4; s.network = cl(s.network + 6);
+      fn:s=>{ s.ability += 4; s.network = clc(s.network + 6);
         s.pendMsg = "他给你泡了茶，讲了三个小时。\n\n讲的都是这栋楼里三十年前的事：哪件事的真正起因是什么，哪个人当年为什么调走。\n\n这三个小时里的东西，你在任何文件上都查不到。\n\n他最后说了一句：这些我跟谁也没讲过。你别往外说。"; } },
     { t:"送了他一程就回来了", eff:{merit:3},
       msg:"你把他送到楼下，看着他上了车。\n\n他摇下车窗说了句「回去吧」。\n\n后来你听说他搬去外地跟儿子住了。你没有他的新号码。" },
@@ -6590,7 +6648,7 @@ const EVENTS = [
   title:"柜子里那个缸子",
   text:`你搬办公室，从柜子最里面翻出了那个茶缸。\n\n上面的字已经磨得看不清了，隐约能认出「先进」两个字。\n\n你今年的位置，比老周当年高了三级。`,
   opts:[
-    { t:"洗干净，摆在窗台上", cost:1, eff:{health:4,family:3,merit:2},
+    { t:"洗干净，摆在窗台上", cost:1, eff:{health:4,family:3,merit:2,legacy:3},
       msg:"你把它洗了，摆在了新办公室的窗台上。\n\n有人问起，你说是一个老同事的。\n\n它在那儿摆到了你退休。你退休那天把它带走了。" },
     { t:"扔了", eff:{merit:3,health:-3},
       msg:"你想了想，扔了。\n\n扔完你在垃圾桶边站了两秒。\n\n这两秒里你想起的不是老周，是二十年前你把它从窗台上收起来的那个自己。" },
@@ -6641,7 +6699,7 @@ const EVENTS = [
   text:`党校请你去讲一次课，两个小时，讲你熟悉的那块业务。\n\n听课的是各县来的干部，一百多人。\n\n课时费八百块。`,
   opts:[
     { t:"认真备了两个星期", cost:3, eff:{merit:5,network:7,health:-4},
-      fn:s=>{ s.flags.lecturer = true; s.ability += 5;
+      fn:s=>{ s.flags.lecturer = true; s.legacy=(s.legacy||0)+5; s.ability += 5;
         s.pendMsg = "你备了两个星期，做了六十页课件，还准备了三个真实案例。\n\n讲完有人来加微信，加了十七个。\n\n这门课后来讲了很多年，每年讲两次。它没有给你带来一次提拔，但它给你带来了整个系统里都认得你的人。"; } },
     { t:"用现成的材料讲了", cost:1, eff:{merit:2,network:3},
       msg:"你把去年的汇报材料改了改就上去了。\n\n讲得四平八稳，下面有一半人在看手机。\n\n课时费八百块，扣了税是七百六。" },
@@ -6658,7 +6716,7 @@ const EVENTS = [
         s.pendMsg = "你查了一个星期，做了一份两百三十七行的台账：年份、事由、经办人。\n\n查到最后你发现有六块牌子的颁发单位已经不存在了。\n\n这份台账后来没有人用过。但荣誉室从此有了一本账。"; } },
     { t:"挑好看的摆出来，其余入库", cost:1, eff:{merit:3,network:2},
       msg:"你挑了六十块，摆得很整齐。\n\n剩下的一百七十七块装了十一个纸箱，推进了地下室。\n\n参观的人只会看见那六十块。这件事本身就说明了荣誉是怎么回事。" },
-    { t:"提议把最老的那几块单独做个展", cost:2, eff:{merit:4,network:5},
+    { t:"提议把最老的那几块单独做个展", cost:2, eff:{merit:4,network:5,legacy:3},
       msg:"最老的一块是一九八三年的，颁给「先进集体」。\n\n你做了个小展台，配了说明。\n\n有位快退休的老同志在那个展台前站了很久。他说他师父的名字在那块牌子背后。" },
   ]},
 
@@ -6678,7 +6736,7 @@ const EVENTS = [
   title:"开个证明",
   text:`你需要一份证明，很简单的那种。\n\n你按流程跑了三个地方，被告知需要另一份证明才能开这一份。\n\n开另一份，需要这一份。`,
   opts:[
-    { t:"老老实实一步步跑", cost:2, eff:{health:-4,merit:3},
+    { t:"老老实实一步步跑", cost:2, eff:{health:-4,merit:3,legacy:5},
       msg:"你跑了五天，最后靠一份四年前的旧材料破了这个循环。\n\n办完之后你回单位，把这件事写成了一份三页纸的建议。\n\n建议报上去了。两年后这个流程改了。你不知道跟你那三页纸有没有关系。" },
     { t:"打了个电话", cost:1, eff:{network:-3,risk:5,merit:-2},
       msg:"你找了个熟人，二十分钟解决。\n\n出门的时候你看见排队的窗口前面站着七八个人。\n\n你走得比平时快了一点。" },
@@ -6690,7 +6748,7 @@ const EVENTS = [
   title:"下去看看",
   text:`一个乡镇报上来说有个隐患点。\n\n材料写得很规范，附了照片，结论是「风险可控」。\n\n照片是三个月前拍的。`,
   opts:[
-    { t:"自己去了一趟", cost:3, eff:{merit:8,health:-4,network:-2},
+    { t:"自己去了一趟", cost:3, eff:{merit:8,health:-4,network:-2,legacy:7},
       msg:"你去了。现场跟照片上不太一样。\n\n你当场定了处置方案，三个月后彻底解决。\n\n没有人为这件事表扬你。这类事的特点是：办成了，什么也不会发生。" },
     { t:"派人去核实", cost:2, eff:{merit:5},
       msg:"你派了两个人下去，回来报告说基本属实，有些小问题已经督促整改。\n\n你签了字。\n\n那年汛期什么也没发生。这不能证明什么，但你确实松了口气。" },
@@ -6814,11 +6872,11 @@ const EVENTS = [
   title:"三分钟",
   text:`一个大会上你要发言，规定三分钟。\n\n你想讲的东西，讲清楚需要八分钟。\n\n前面已经有两个人超时了。`,
   opts:[
-    { t:"删到三分钟，只讲最要紧的一点", cost:2, eff:{merit:6,network:4},
+    { t:"删到三分钟，只讲最要紧的一点", cost:2, eff:{merit:6,network:4,legacy:3},
       msg:"你只讲了一件事，讲得很透。\n\n两分五十秒。\n\n散会后有三个人来找你要那份完整材料。这比你在台上讲八分钟有用得多。" },
     { t:"讲了六分钟", cost:1, eff:{merit:3,network:-4},
       msg:"你超时了三分钟。主持人看了两次表。\n\n后面的人被压缩了时间。\n\n没有人说什么。但从此以后，凡是有时限的发言，你的名字排得越来越靠后。" },
-    { t:"三分钟，但把重点做成了一页纸发下去", cost:3, eff:{merit:8,network:5},
+    { t:"三分钟，但把重点做成了一页纸发下去", cost:3, eff:{merit:8,network:5,legacy:5},
       msg:"你讲了三分钟，同时给每个人发了一页纸。\n\n那一页纸后来被复印了很多次。\n\n有人跟你说：你那页纸我们处贴在墙上了。这是你听过的最实在的表扬。" },
   ]},
 
@@ -6838,11 +6896,11 @@ const EVENTS = [
   title:"整改清单",
   text:`上级检查反馈了十一条问题。\n\n其中八条是表述和台账的问题，两条是执行的问题，一条是体制的问题。\n\n整改期限一个月。`,
   opts:[
-    { t:"八条按期改完，两条真做，一条如实说明", cost:4, eff:{merit:9,health:-6,network:-3},
+    { t:"八条按期改完，两条真做，一条如实说明", cost:4, eff:{merit:9,health:-6,network:-3,legacy:8},
       msg:"你把那一条体制问题写了一页纸报上去，说明为什么本级解决不了。\n\n复查的时候，那一页纸被专门提了出来。\n\n提的人说：这个反映得对。这四个字换来了后来的一次调研，调研之后那条真的改了。" },
     { t:"十一条全部对账销号", cost:3, eff:{merit:5,health:-4},
       msg:"一个月，十一条，全部销号，材料两百多页。\n\n复查通过了。\n\n那两条执行问题在第二年又出现了。第三年也是。你后来看到这类清单，第一反应是数一数有几条是真的。" },
-    { t:"抓那两条真问题，台账的先放放", cost:3, eff:{merit:4,network:-7},
+    { t:"抓那两条真问题，台账的先放放", cost:3, eff:{merit:4,network:-7,legacy:7},
       msg:"你把力气放在了两条执行问题上，真解决了。\n\n复查的时候台账不全，被扣了分，通报里点了你们的名。\n\n那两条执行问题从此没有再出现过。这件事没有人知道。" },
   ]},
 
@@ -6909,6 +6967,234 @@ const EVENTS = [
       msg:"你打听到了不少：他在原单位怎么样、喜欢什么风格、忌讳什么。\n\n这些信息大部分是对的。\n\n你后来发现，最重要的那一条没有人告诉你——他最烦的就是别人打听他。" },
   ]},
 
+
+/* ================= 进部链 =================
+   跟副国级那条冲顶链同构，但关口不一样：
+   副国级考的是「你干净不干净、有没有做成过那件事」；
+   到部级这一步，考的是「你离得开地方吗」——
+   跨系统、跨层级、去一个你没有任何根基的盘子里，重新证明一次。
+
+   三环：名单 → 那两年 → 回不回来。
+   走通了直接升副部（年末照常出任命通知）；没走通也不堵死正常评定，
+   只是那条路的分数线要高十二分——这就是「能力和机遇」那道墙。
+========================================== */
+
+{ id:"bu1", w:0, force:true, tag:"进 部",
+  title:"名单上有你",
+  text:s=>{
+    const t = s.flags.buTries || 0;
+    if(t === 0) return `上面要从下面抽一个人，去一个跨了三个省的专项，两年。\n\n那个位置不属于任何一个地方，也不归你们这个系统管。去了以后，你在青阳、在临川攒下的所有东西，一样也带不过去。\n\n名单一共四个人。有你。`;
+    if(t === 1) return `又一次。还是那种位置：跨系统、跨层级、两年、没有根基。\n\n上一次你没走成。这一次名单上只有三个人。\n\n你今年${cn(s.age)}岁了。`;
+    return `第三次了。\n\n传话的人这回说得很直白：这可能是最后一次问你。\n\n你听懂了「最后」这两个字。`;
+  },
+  opts:[
+    { t:"去谈一次，把自己能干什么说清楚", cost:3, eff:{network:9,risk:6},
+      fn:s=>{ s.flags.buStage=1; s.flags.buYear=s.year; s.flags.buPush=true; s.flags.buTries=(s.flags.buTries||0)+1;
+        s.pendMsg="你准备了二十分钟的话，讲了十一分钟。\n\n你没有说自己多想去，你说的是那个专项现在卡在哪儿、你手上有什么是能用的。\n\n对方一直在记。\n\n【进入人选视野 · 你把自己讲成了一个工具，而不是一个申请人】"; } },
+    { t:"什么也不做，等组织安排", cost:1, eff:{merit:5},
+      fn:s=>{ s.flags.buStage=1; s.flags.buYear=s.year; s.flags.buQuiet=true; s.flags.buTries=(s.flags.buTries||0)+1;
+        s.pendMsg="你照常上班，一句话也没说。\n\n有两个人来试探过，你都笑着岔开了。\n\n名单报上去的时候你还在改一份材料。\n\n【进入人选视野 · 最稳的那种姿态】"; } },
+    { t:"说家里实在走不开", eff:{family:11,health:6,network:-8},
+      fn:s=>{ s.flags.buStage=9; s.flags.buYear=s.year;
+        s.pendMsg="你说了实话：老人身体不好，孩子在关键的年份。\n\n对方说理解，记了下来。\n\n后来去的是另一个人。他两年后回来，直接进了部里。\n\n你不后悔。你只是从那以后，再没有人拿这种事来问过你。\n\n【这扇门你自己关上了】"; } },
+  ]},
+
+{ id:"bu2", w:0, force:true, tag:"进 部",
+  title:"那 两 年",
+  text:s=>`你去了。\n\n办公室在一栋你从来没进过的楼里，同事没有一个是你认识的。第一个星期你连打印机在哪儿都要问。\n\n专项本身卡在一件事上：三个省，三套口径，谁也不肯先动。\n\n你没有根基，也没有人情可用。你只有两年。`,
+  opts:[
+    { t:"一个人啃，把三套口径逐条对出来", cost:5, eff:{health:-13,family:-9},
+      fn:s=>{ const ok = chance(.40 + s.ability/240);
+        if(ok){ s.flags.buStage=2; s.flags.buYear=s.year; s.merit=clc(s.merit+14); s.legacy=(s.legacy||0)+11; s.ability+=8;
+          s.pendMsg="你花了七个月，把三个省近十年的口径逐条对了出来，做成一张四十七页的表。\n\n开会那天你没有说服任何人——你只是把那张表发了下去。\n\n第二天有一个省先松了口。\n\n【事情动起来了 · 只剩最后一步】"; }
+        else { s.flags.buStage=0; s.flags.buYear=s.year; s.merit=clc(s.merit-6); s.legacy=(s.legacy||0)+4;
+          s.pendMsg="你对到第五个月，发现有一套口径的原始依据已经找不到了。\n\n两年到期，事情推进了一半。\n\n没有人说你不行。材料里写的是「取得阶段性成果」。这六个字你在很多份材料里见过，第一次落在自己头上。"; } } },
+    { t:"先把人摸熟，第二年再动", cost:4, eff:{health:-7,family:-6,network:11},
+      fn:s=>{ const ok = chance(.36 + s.network/300 + (s.flags.buPush?0.06:0));
+        if(ok){ s.flags.buStage=2; s.flags.buYear=s.year; s.network=clc(s.network+16); s.legacy=(s.legacy||0)+7;
+          s.pendMsg="头一年你几乎没干正事：吃饭、喝茶、听他们讲各自的难处。\n\n第二年开春你提了一个方案，方案里每一条都是他们自己说过的话。\n\n没有人反对自己说过的话。\n\n【事情动起来了 · 只剩最后一步】"; }
+        else { s.flags.buStage=0; s.flags.buYear=s.year; s.network=clc(s.network+8);
+          s.pendMsg="人是摸熟了，事没动。\n\n你后来想明白了：在那个地方，熟不等于能办事——他们跟你客气，是因为你两年以后就走了。\n\n两年一到，你走了。"; } } },
+    { t:"守成，两年不出错就行", cost:2, eff:{health:-3,merit:-4},
+      fn:s=>{ s.flags.buStage=0; s.flags.buYear=s.year;
+        s.pendMsg="你把每一份材料都做得规规矩矩，两年没出一件事。\n\n交接那天，接手的人问了你一句：这个事到底卡在哪儿？\n\n你张了张嘴。你在这儿待了两年，你答不上来。"; } },
+  ]},
+
+{ id:"bu3", w:0, force:true, tag:"进 部",
+  title:"回不回来",
+  text:s=>`事情办成了。\n\n两年到期，摆在你面前的是两条路：留下，这一摊接着往下做，但你在地方上的一切从此清零；\n\n或者回去——回到那间你熟悉的办公室，回到那些认识你二十年的人中间。\n\n问你意见的人说：这个真的由你自己定。`,
+  opts:[
+    { t:"留下", cost:3, eff:{family:-14,health:-6},
+      fn:s=>{
+        const score = pctOf(s.merit)*0.34 + pctOf(s.network)*0.22 + Math.min(30, s.ability*0.28) + rnd(0, 24)
+                    + (s.flags.buPush ? 4 : 0) + tSum("promo");
+        if(score >= 82){
+          const from = RANKS[s.rank];
+          s.flags.buDone = true; s.flags.buStage = 3;
+          s.rank = Math.max(s.rank, 7); s.yearsInRank = 0; s.merit *= 0.85;
+          s.legacy = (s.legacy||0) + 9;
+          s.log.push([s.year, "晋升为 " + RANKS[s.rank]]);
+          const base = RETIRE_AGE(s.rank), plus = s.retireAge > 65 ? s.retireAge - 65 : 0;
+          if(base !== 999) s.retireAge = base + plus;
+          queuePromo(s, from, RANKS[s.rank],
+            "任命是在一间很小的会议室里宣布的，一共九个人，念完就散了。\n\n没有人跟你握手，因为这里的人还不太认识你。\n\n那天晚上你回到周转房，给家里打了个电话。你妈问你这算多大的官，你说了半天没说清楚。\n\n最后你说：就是不回去了。\n\n那头安静了一会儿，说：哦。");
+        } else {
+          s.flags.buStage = 0; s.flags.buYear = s.year; s.merit = clc(s.merit + 8); s.legacy = (s.legacy||0) + 5;
+          s.pendMsg = "你留下了，位置没动。\n\n这一摊你又做了三年，做得很好。\n\n三年后有一次机会，去的是另一个人——比你小七岁，从另一个系统调来的。\n\n你在那间会议室里给他鼓了掌。";
+        }
+      } },
+    { t:"回来", eff:{family:14,health:7,merit:9},
+      fn:s=>{ s.flags.buStage=9; s.legacy=(s.legacy||0)+6;
+        s.pendMsg="你回来了。\n\n办公室还是那间，通讯录还是那本，食堂的红烧肉还是那个味道。\n\n那个专项后来做成了，成果材料里有你的名字，排在第三个。\n\n你偶尔会想起那栋楼里的打印机在哪儿。你记得很清楚。\n\n【你选了熟悉的那一边】"; } },
+  ]},
+
+
+/* ============ 中期钱线（正科～副厅） ============
+   之前这一段一局只碰得到三四次钱，玩家根本走不进那条线。
+   这一批全部落在 rank 2~5，数额不大——正是这个量级才真实：
+   从几千块的发票开始，人是一步一步走过去的，不是一步跨过去的。
+   pri 给了中期加成，让它们在这一段真的出得来。
+============================================== */
+
+{ id:"m_fapiao", w:13, cd:6, pri:s=>1 + (s.rank>=2&&s.rank<=5 ? 0.8 : 0), cond:s=>s.rank>=2 && s.rank<=5, tag:"风险",
+  title:"一沓发票",
+  text:s=>nth("m_fapiao")<=1
+    ? `一个供应商结完款，顺手递过来一沓发票，说「领导单位报销用得上」。\n\n加起来不到六千。\n\n他说这句话的时候语气很轻，轻到像在说天气。`
+    : `又是那种发票。\n\n你现在知道这东西是怎么来的了：他们每做一单，都会留出这么一沓。\n\n给谁不给谁，是有名单的。`,
+  opts:[
+    { t:"收下", eff:{bribe:0.55, risk:13},
+      msg:"你把它们放进了抽屉最里面。\n\n后来陆陆续续用掉了，一次几百，没有一笔显眼。\n\n三年后你换办公室，抽屉最里面还剩两张。你把它们撕了，撕得很碎。" },
+    { t:"退回去，但话说得很客气", eff:{risk:-4,network:-3,legacy:2},
+      msg:"你说单位报销有规矩，用不上。\n\n他连说了三次「理解理解」。\n\n下一次他来，什么也没带。这件事你记了很久——不是因为他没带，是因为他记住了。" },
+    { t:"收下，然后交给办公室入账", cost:2, eff:{risk:-9,network:-7,merit:3,legacy:3},
+      msg:"你当着他的面把发票交给了办公室，登记造册。\n\n他的脸色变了一下，很快就恢复了。\n\n这件事在这个系统里传得比你想的快。有人说你不给面子，也有两个人从此觉得你靠得住。" },
+  ]},
+
+{ id:"m_yansou", w:12, cd:7, pri:s=>1 + (s.rank>=2&&s.rank<=5 ? 0.7 : 0), cond:s=>s.rank>=2 && s.rank<=5, tag:"风险",
+  title:"验收单",
+  text:`一个小工程要验收，你是签字的人之一。\n\n现场你看出来两处不合规范。不大，修一修的事，但修要停两个星期。\n\n施工方老板一直陪在你旁边，什么也没说。`,
+  opts:[
+    { t:"签了。这点问题不至于", eff:{bribe:1.1, risk:16},
+      msg:"你签了字。\n\n第二天你桌上多了一样东西，不大，也不显眼。\n\n你没有退。你后来想过很多次那两处不合规范的地方，一直到五年后它们真的出了问题。" },
+    { t:"要求整改，两周后再验", cost:2, eff:{merit:5,network:-6,legacy:5},
+      msg:"你在验收单上写了「不予通过」，列了两条。\n\n他当场没说什么，第二天托人来问是不是有别的意思。\n\n你说没有别的意思，就是那两处。整改完了你签的字。" },
+    { t:"签了，但把问题写进备注", cost:1, eff:{merit:3,risk:5,legacy:3},
+      msg:"你签了字，在备注栏写了两行。\n\n工程按时交付了，皆大欢喜。\n\n五年后那两处出了问题。追溯的时候翻到你那两行备注——它没有阻止任何事，但它把你摘了出来。" },
+  ]},
+
+{ id:"m_laoxiang_gong", w:12, cd:8, pri:s=>1 + (s.rank>=2&&s.rank<=5 ? 0.7 : 0), cond:s=>s.rank>=2 && s.rank<=5, tag:"风险",
+  title:"老乡的工程",
+  text:`一个老乡在你分管的领域做工程。\n\n他没有开口求过你任何事，只是逢年过节来坐坐，每次都带点老家的土产。\n\n今年有个项目要分包，他在名单里，排第三。`,
+  opts:[
+    { t:"什么也不做，按流程走", eff:{merit:3,network:-3,legacy:4},
+      msg:"名单最后定了第一家。他没中。\n\n他还是照常来坐坐，还是带土产。\n\n有一年他喝多了说了句：其实我知道你帮不上。这句话让你难受了很久，因为你确实帮得上。" },
+    { t:"跟经办的人说了句「都是正规公司」", eff:{bribe:2.2, risk:19, network:5},
+      msg:"你说的是实话，而且你什么也没有指定。\n\n他中了。\n\n那年过年他带的东西比往年重了一档。你推让了一下，收了。这一下推让，你后来复盘过很多遍。" },
+    { t:"提前跟他把话说清楚", cost:2, eff:{network:-8,merit:4,risk:-7,legacy:5},
+      msg:"你把他约出来，说得很直：这个领域你不要碰，碰了我们俩都难做。\n\n他愣了很久，说：那我换个行当。\n\n他真的换了。这件事十几年后你还会想起，每次想起心里都很稳。" },
+  ]},
+
+{ id:"m_zhuanxiang", w:12, cd:8, pri:s=>1 + (s.rank>=3&&s.rank<=5 ? 0.8 : 0), cond:s=>s.rank>=3 && s.rank<=5, tag:"风险",
+  title:"一笔专项",
+  text:`一笔专项资金下来了，用途写得很宽。\n\n宽到你有三种花法：完全按上面的意思、按本地实际需要、或者按某几个人的意思。\n\n三种都说得过去。`,
+  opts:[
+    { t:"按本地实际需要花", cost:3, eff:{merit:8,network:-5,legacy:7},
+      msg:"你带人下去摸了两个星期，把钱按最急的地方分了。\n\n上面来检查的时候，你们的报表最难看——因为最急的地方往往最不出彩。\n\n三年后有个乡的书记专门来找你，说了句谢谢。他说的是三年前那笔钱。" },
+    { t:"按上面的意思花，报表最好看", cost:1, eff:{merit:6,network:4},
+      msg:"报表做得很漂亮，检查得了优。\n\n钱花在了三个示范点上，都在路边。\n\n有一次你自己开车路过其中一个，停下来看了一会儿。做得确实很好看。" },
+    { t:"匀出一部分照顾几个人的诉求", eff:{bribe:2.8, risk:22, network:9},
+      msg:"你分了三块，其中一块给了几个说得上话的人。\n\n这笔钱花得毫无痕迹：每一笔都有项目、有验收、有票据。\n\n你唯一记得的是，那年冬天有个村的取暖改造没排上。" },
+  ]},
+
+{ id:"m_qingke", w:12, cd:6, pri:s=>1 + (s.rank>=2&&s.rank<=5 ? 0.6 : 0), cond:s=>s.rank>=2 && s.rank<=5, tag:"应酬",
+  title:"这顿谁买单",
+  text:`一顿饭，六个人，你是级别最高的。\n\n吃到最后，坐在你右手边那位很自然地起身去了收银台。\n\n他是来办事的。事情还没办。`,
+  opts:[
+    { t:"追出去把单买了", cost:1, eff:{money:-0.6,network:4,risk:-5,legacy:3},
+      msg:"你抢在他前面刷了卡。\n\n回到桌上，他有点不自在。\n\n那件事你后来按规矩办了，办成了。他再请你吃饭，你说下次我请。这个「下次」你们循环了很多年。" },
+    { t:"让他买", eff:{risk:9,network:3},
+      msg:"你没有动。\n\n这顿饭一千二。你后来知道，他那个月这样的饭吃了十一顿。\n\n这一千二在他那里不是钱，是一张入场券。你收下了这张券。" },
+    { t:"当场说好 AA", cost:1, eff:{money:-0.3,network:-5,merit:2,legacy:2},
+      msg:"你提议 AA，桌上安静了两秒。\n\n最后是真 AA 了，每人两百。\n\n那顿饭后半程气氛有点冷。他后来没有再约过你，事情也是走正常渠道办的，慢了两个月。" },
+  ]},
+
+{ id:"m_jiegou", w:11, cd:9, pri:s=>1 + (s.rank>=3&&s.rank<=5 ? 0.7 : 0), cond:s=>s.rank>=3 && s.rank<=5, tag:"风险",
+  title:"一间铺面",
+  text:`一个熟人手上有间临街的铺面要出手，价钱比市面低两成。\n\n他说是急着周转，不是给你什么好处。\n\n你查过，这个价确实低，低得刚好不至于让人起疑。`,
+  opts:[
+    { t:"买了", eff:{money:-32, bribe:2.4, risk:20},
+      msg:"手续办得干干净净，钱是你自己出的，合同是市场价往下两成。\n\n这间铺面后来一直在收租。\n\n每年填表的时候，你都要在「房产」那一栏多想一下怎么写。" },
+    { t:"按市场价买", eff:{money:-40, health:2, legacy:2},
+      msg:"你坚持按评估价成交，多出的那部分他推了三次才收。\n\n他后来跟人说你这个人「太较真」。\n\n较真是有价钱的，这一次的价钱是八万。你觉得便宜。" },
+    { t:"不买", eff:{risk:-5,network:-3},
+      msg:"你说手上没有闲钱。\n\n那间铺面后来卖给了另一个人。你路过很多次，从来没进去过。\n\n有一年那条街拆迁，赔了三倍。你听说的时候正在开会，没什么反应。" },
+  ]},
+
+/* ============ 作风线的入口（中期） ============
+   原来这条线只有一两个入口，还都卡在副处以上，所以一局基本碰不到。
+   这几个补在正科～正厅，一律克制：不写过程，只写代价和之后。
+========================================== */
+
+{ id:"m_peixun_ren", w:12, cd:10, pri:s=>1.2, cond:s=>s.rank>=2 && s.rank<=6 && s.age>=30 && s.age<=52 && !s.flags.affair && !s.flags.affairEnded, tag:"抉择",
+  title:"培训班上",
+  text:s=>`一个月的脱产培训，同一个班，四十多个人。\n\n有个人跟你聊得来。不是别的，就是聊得来——你们对同一件事的判断几乎每次都一样，这在你这些年里很少见。\n\n结业那天晚上聚餐，散场以后你们在楼下站了很久。${s.flags.married ? "\n\n你手机里有三个未接来电，都是家里的。" : ""}`,
+  opts:[
+    { t:"道了别，第二天就回去了", eff:{health:3,family:5,legacy:2},
+      msg:"你们互相说了「以后常联系」。\n\n后来没有常联系。逢年过节发一条群发的祝福，隔两年就断了。\n\n很多年后你在一个会上远远看见过一次。你没有过去。" },
+    { t:"加了联系方式，往下走了一步", cost:2, eff:{health:4,family:-9,risk:11},
+      fn:s=>{ s.flags.affair=true; s.flags.affairYear=s.year;
+        s.pendMsg="这件事发生在第二年春天。\n\n你们在单位里演得很好。最先看出来的是打扫卫生的阿姨，第二个是你的司机。\n\n【说不清的关系】"; } },
+    { t:"停在了那个晚上", cost:1, eff:{health:2,family:-3},
+      fn:s=>{ s.flags.almostAffair=true;
+        s.pendMsg="你们什么也没有发生。\n\n但那天晚上在楼下站的四十分钟，你记了很多年——比很多真正发生过的事记得都清楚。\n\n这大概是这类事里最好的结局，也是最不甘心的一种。"; } },
+  ]},
+
+{ id:"m_xiashu_she", w:11, cd:11, pri:s=>1.1, cond:s=>s.rank>=3 && s.rank<=6 && s.age>=36 && s.age<=56 && !s.flags.affair && !s.flags.affairEnded, tag:"抉择",
+  title:"她来问一件事",
+  text:`处里一个年轻人来问工作上的事，问完没有走。\n\n她说了一些跟工作无关的话——家里的、将来的、一个人在这个城市的。\n\n你听着。你知道这种谈话在这栋楼里意味着什么，也知道自己现在应该看一眼表。`,
+  opts:[
+    { t:"看了一眼表", eff:{network:-3,legacy:3},
+      msg:"你说下午还有个会。\n\n她愣了半秒，站起来说打扰了。\n\n此后你们的关系一直很规范。她后来干得不错，调走那年来道别，说了句「谢谢领导这些年」。这句话是干净的。" },
+    { t:"聊了下去", cost:2, eff:{health:3,family:-8,risk:12},
+      fn:s=>{ s.flags.affair=true; s.flags.affairYear=s.year;
+        s.pendMsg="那次谈话之后还有第二次、第三次。\n\n你们都很小心。小心到你后来觉得，最累的不是这件事本身，是维持它不被发现。\n\n【说不清的关系】"; } },
+    { t:"帮她把实际的困难解决了", cost:2, eff:{network:4,merit:3,legacy:4},
+      msg:"你没有接那些话，转而问了她两个很具体的问题：住的地方、值班的排法。\n\n然后你去办公室改了两件事。\n\n她后来什么也没有再说过。但从那以后，处里的年轻人有事都愿意找你。" },
+  ]},
+
+{ id:"m_jiedai_she", w:10, cd:12, pri:s=>1.1, cond:s=>s.rank>=4 && s.rank<=6 && !s.flags.affair && !s.flags.affairEnded, tag:"风险",
+  title:"陪同的那位",
+  text:`一次外地接待，对方安排了全程陪同。\n\n第三天晚上活动结束得早，陪同的那位提出可以再去一个地方坐坐，说「不耽误明天」。\n\n她说这句话的时候看了你两秒。`,
+  opts:[
+    { t:"说明天早上有事，回房间了", eff:{health:2,risk:-6,legacy:3},
+      msg:"你回房间看了两个小时材料，十一点睡的。\n\n第二天的座谈会你状态很好，讲的东西对方记了很多。\n\n那位陪同后来还是很客气。有些事不发生，关系反而更长久。" },
+    { t:"去了", cost:2, eff:{risk:22,health:-3,family:-6},
+      fn:s=>{ s.flags.fengka = true;
+        s.pendMsg="那天晚上的事你后来一直没有跟任何人提过。\n\n回来以后半年，你都会在收到陌生号码的时候先愣一下。\n\n什么也没发生。但「什么也没发生」这五个字，你是过了三年才敢说的。"; } },
+    { t:"带上另外两个同事一起去", cost:1, eff:{network:5,risk:3},
+      msg:"你说好啊，然后叫上了同行的另外两位。\n\n四个人喝了茶，聊到十点半。\n\n那位陪同全程都很自然。你们谁也没有点破什么，这件事就这么过去了——这是这类场合里最体面的一种收场。" },
+  ]},
+
+
+/* 同届的实况：文案直接读 S.cohort，所以每一次看到的都是这一局真实的状态 */
+{ id:"co_list", w:11, cd:9, cond:s=>s.age>=34 && (s.cohort||[]).length>0, tag:"办公室",
+  title:"那 一 届",
+  text:s=>{
+    const yrs = s.year - 2026;
+    const lines = (s.cohort||[]).map(p => "　　" + p.name + "　" + fateText(p)).join("\n");
+    const gone = (s.cohort||[]).filter(p=>p.fate).length;
+    return `有人在群里发了一张表，是当年那一批人现在的去向。\n\n${cn(yrs)}年了。\n\n` + lines +
+      (gone ? "\n\n名单上有几个名字后面写的不是职务。" : "\n\n五个人都还在岗上。这在这个年头已经不多见了。");
+  },
+  opts:[
+    { t:"看完，什么也没说", eff:{health:-2},
+      msg:"你把那张表看了三遍。\n\n第三遍看的是自己那一行。\n\n你在心里给自己排了个位置，排完就把手机扣下了。" },
+    { t:"挨个私聊了一遍", cost:2, eff:{network:6,health:-2},
+      msg:"你给还联系得上的每个人都发了条消息。\n\n回的有三个。其中一个聊了很久，聊的都是二十几岁那两年。\n\n有一个没回。你后来知道他那阵子正难。" },
+    { t:"退了那个群", eff:{health:4,network:-5},
+      msg:"你点了退出。\n\n没有人问你为什么。这种群本来也没有人真的在说话。\n\n退完之后你有点轻松，也有点说不上来的东西。" },
+  ]},
+
 { id:"echo_archive", w:16, pri:6, once:true, tag:"回 响",
   cond:s=>s.flags.archiveSorted && s.rank>=3 && (s.year-(s.flags.archiveYear||9999))>=12,
   title:"九八年的那份文件",
@@ -6918,7 +7204,7 @@ const EVENTS = [
   },
   opts:[
     { t:"当场说出来，带人去找", cost:3, eff:{merit:22,network:11},
-      fn:s=>{s.flags.bigwin=true;},
+      fn:s=>{s.flags.bigwin=true; s.legacy=(s.legacy||0)+10;},
       msg:"三个小时后，那份泛黄的批复摆在了会议桌上。三百多户的事有了依据。\n\n散会时一把手问你：你怎么知道在那儿？\n\n你说，二十多年前我整理过。\n\n他看了你很久，说：难为你还记得。\n\n那个春节除夕，门卫老李给你端了碗饺子。你当时觉得那六天什么意义也没有。\n\n【长链回响 · 值班室的档案】【重大政绩】" },
     { t:"会后自己去找，找到了再报", cost:4, eff:{merit:15,network:4,health:-3},
       msg:"你一个人在档案馆待了一整晚，把那一格翻了出来。\n\n第二天你把复印件放在一把手桌上，什么也没多说。\n\n他后来在别的场合提过一次：有的同志，是能从故纸堆里翻出东西来的。\n\n那六天的除夕，终于有了一点意义。\n\n【长链回响 · 值班室的档案】" },
@@ -6962,14 +7248,17 @@ function newGame(){
     evMul: rollEventPrefs(),
     nextInspect: 2026 + ri(5, 9), inspecting:false, inspectWarned:false,
     patron:{ name:"李主任", favor:20, alive:true },
-    rival:{ name:"王建", rank:0 },
+    cohort: rollCohort(),
+    rival: null,        // cohortTick 每年重新指向"最有得比的那个"
     waves:[], wavePool:WAVES.map(w=>w.id), nextWave:2030+ri(0,2),
     retireAge:65, retired:false, overtime:false, dead:false,
     busted:false, quit:false, sickLeave:false, diedInOffice:false,
     yearEnd:null, ending:null, notices:[], forceEvent:null, lowFamYears:0,
     promoMsg:null, guojiFailMsg:null, pendingPromo:null, endAfterPromo:false,
     talents:[],
+    legacy:0, legacyHint:0,   // ★ 第三条线：功业。不上属性条，靠事件、词条和结局自己浮出来
   };
+  S.rival = S.cohort[0];  // 开局先指一个，之后每年由 cohortTick 重挑
   rollTalents();          // 天赋要在 startYear 之前定下来：精力上限就受它影响
   startYear();
   // 开局不再单独弹一张「个人素质」——天赋在档案里已经写着了，重复一遍是噪音
@@ -7068,8 +7357,13 @@ function rollEventPrefs(){
 ------------------------------------------------ */
 function bribeMul(st){
   const r = (st||S).rank;
-  // 正处以下按 1.42^级 平稳增长；正处往上再叠一层，因为那一层能动的东西完全不是一回事
-  return Math.pow(1.42, r) * Math.pow(1.78, Math.max(0, r - 4)) * tMul("greyMul");
+  /* 厅级是这条线的顶点：管项目、管审批、管落地，手能伸到的地方最多。
+     到了部级反而降下来——那一层管的是政策不是项目，经手的具体钱少了，
+     盯着的眼睛却多了一个数量级。所以「贪污重灾区」在厅局，不在部里。 */
+  const eff = Math.min(r, 6);
+  let m = Math.pow(1.42, eff) * Math.pow(1.78, Math.max(0, eff - 4));
+  if(r >= 7) m *= Math.pow(0.72, r - 6);
+  return m * tMul("greyMul");
 }
 /* 钱到了一定量级，用「万」已经不好读了 */
 function yuan(v, dp){
@@ -7097,10 +7391,28 @@ function eventsThisYear(){
   return ri(2, 3);                    // 副厅往上：那个位置没有闲年
 }
 
+/* ---------- 功业的回音 ----------
+   功业不上属性条，也不给数字。它只在跨过几个刻度的时候，
+   让某件你早就忘了的事自己回来一次 —— 这是玩家唯一能察觉这条线存在的地方。
+   刻度之间隔得很远，所以一局最多也就响三次。 */
+const LEG_HINTS = [
+  { at:20, t:"回 音", b:"一个你不认识的人在会上引用了一份材料。\n\n那份材料是你写的，四年前，你自己都快忘了。\n\n他不知道是你写的。他只是说：按现在的规定。" },
+  { at:42, t:"回 音", b:"你去外地开会，接待的人说他们那边一直在用一套办法，是从这边学的。\n\n他讲了两句你就听出来了——那是你当年琢磨出来的。\n\n他不知道你是谁。你也没说。" },
+  { at:68, t:"回 音", b:"有个年轻人拿着一份东西来找你确认一个细节。\n\n你翻开一看，是十几年前你签的字，纸已经发黄了。\n\n他说：这个到现在还在执行。\n\n你「嗯」了一声，把它合上了。你那天下午什么也没干成。" },
+];
+function legacyEcho(){
+  const i = S.legacyHint || 0;
+  if(i >= LEG_HINTS.length) return;
+  if((S.legacy || 0) < LEG_HINTS[i].at) return;
+  S.legacyHint = i + 1;
+  S.notices.push({ gray:true, t:LEG_HINTS[i].t, b:LEG_HINTS[i].b });
+}
+
 /* ---------- 年度开始 ---------- */
 function startYear(){
   S.notices = []; S.pendMsg = null; S.promoMsg = null; S.yearEnd = null;
   S.pendingPromo = null;   // 上一年的任免都出过通知了，不该漏到今年
+  legacyEcho();            // 攒够了就让一件旧事自己回来一次
   S.deltas = {};
   tickWaves();
   S.energyPool = baseEnergy();
@@ -7164,8 +7476,15 @@ function applyEff(eff){
   const m = waveMods();
   const D = S.deltas;
   const add = (k,v)=>{ D[k]=(D[k]||0)+v; };
-  if(eff.merit!=null){ const v=eff.merit>0?eff.merit*m.meritMul:eff.merit; S.merit=cl(S.merit+v); add("merit",v); }
-  if(eff.network!=null){ S.network=cl(S.network+eff.network); add("network",eff.network); }
+  /* 事件给的正向收益要打折 ——
+     实测一局里事件送出来的政绩比整整四十年的精力分配还多，
+     于是「随便点点」也能把属性堆上去，选哪个根本不重要。
+     打完折之后：事件仍然是这一局里最大的变量（选对选错的差别反而更明显），
+     但它不再能替代你在精力上的取舍。负向的一律不打折——代价就是代价。 */
+  if(eff.merit!=null){ const v = eff.merit>0 ? eff.merit*0.58*m.meritMul : eff.merit;
+    S.merit = clc(S.merit+v); add("merit",v); }
+  if(eff.network!=null){ const v = eff.network>0 ? eff.network*0.72 : eff.network;
+    S.network = clc(S.network+v); add("network",v); }
   if(eff.health!=null){ const v=eff.health<0?eff.health*0.55*m.healthMul*hpLossMul():eff.health; S.health=cl(S.health+v); add("health",v); }
   if(eff.family!=null){ const v=eff.family<0?eff.family*(m.familyMul||1):eff.family; S.family=cl(S.family+v); add("family",v); }
   if(eff.bribe!=null){ const v=Math.round(eff.bribe*bribeMul()*m.greyMul*10)/10;
@@ -7174,6 +7493,11 @@ function applyEff(eff){
     if(eff.money>0 && eff.risk>0) S.grey = (S.grey||0) + eff.money; }   // 说不清的那部分
   if(eff.risk!=null){ const v = eff.risk>0 ? eff.risk*RISK.EV_GAIN*m.riskGainMul : eff.risk*RISK.EV_DROP;
     S.risk=cl(S.risk+v,0,140); add("risk",v); }
+  /* ---------- 功业 ----------
+     第三条线的计量。它跟政绩不是一回事：政绩是「今年的分」，会折旧，会因为换了领导归零；
+     功业是「留下来的东西」——一条路、一套制度、一个被你拦下来的窟窿、一个被你带出来的人。
+     它只涨不跌，也不进属性条。玩家只能从事件文案、档案和最后那张纸上把它认出来。 */
+  if(eff.legacy!=null){ S.legacy = (S.legacy||0) + eff.legacy; }
 }
 
 function chooseOpt(i){
@@ -7230,10 +7554,10 @@ function confirmAlloc(){
     if(why){ (P[k] = P[k] || {}); P[k][why] = (P[k][why] || 0) + v; } };
   const abMul = 1 + S.ability/200;
 
-  if(a.work){ const v=a.work*2.2*abMul*m.meritMul*tMul("workMul"); S.merit=cl(S.merit+v); add("merit",v,"工作");
+  if(a.work){ const v=a.work*2.2*abMul*m.meritMul*tMul("workMul"); S.merit = clc(S.merit+v); add("merit",v,"工作");
               const h=-a.work*0.45*m.healthMul*hpLossMul()*tMul("workHp"); S.health=cl(S.health+h); add("health",h,"工作");
               const f=-a.work*0.32; S.family=cl(S.family+f); add("family",f,"工作"); }
-  if(a.rel){  const v=a.rel*2.3*tMul("relMul"); S.network=cl(S.network+v); add("network",v,"关系");
+  if(a.rel){  const v=a.rel*2.3*tMul("relMul"); S.network = clc(S.network+v); add("network",v,"关系");
               const mo=-a.rel*0.28; S.money=Math.max(0,S.money+mo); add("money",mo,"应酬");
               const f=-a.rel*0.35; S.family=cl(S.family+f); add("family",f,"关系"); }
   if(a.fam){  const v=a.fam*2.8*(m.familyMul||1)*tMul("famGain"); S.family=cl(S.family+v); add("family",v,"陪家人");
@@ -7276,14 +7600,14 @@ function settle(){
 
   // 政绩/人脉折旧
   const dm = decayMul();
-  const md = -S.merit*0.055*dm*tMul("meritDecay"), nd = -S.network*0.032*dm*tMul("netDecay")*m.netDecayMul;
-  S.merit = cl(S.merit+md); S.network = cl(S.network+nd);
+  const md = -S.merit*0.055*dm*tMul("meritDecay"), nd = -S.network*0.042*dm*tMul("netDecay")*m.netDecayMul;
+  S.merit = clc(S.merit+md); S.network = clc(S.network+nd);
   add("merit", md, "折旧"); add("network", nd, "折旧");
   S.decayLabel = dm >= 0.95 ? "" : `折旧加速 ×${dm.toFixed(2)}`;
 
   // 档案词条带来的逐年增减
   const nY = tSum("netYear"), rY = tSum("riskYear");
-  if(nY){ S.network = cl(S.network + nY); add("network", nY, "档案词条"); }
+  if(nY){ S.network = clc(S.network + nY); add("network", nY, "档案词条"); }
   if(rY){ S.risk = cl(S.risk + rY, 0, 140); add("risk", rY, "档案词条"); }
 
   // 攥在手里的那部分：每年计提一次。
@@ -7316,6 +7640,20 @@ function settle(){
     S.forceEvent = "d_keng3";
   }
 
+  /* 进部通道：正厅上待满两年就会被问一次。摔过一次要晾三年。
+     stage 9 是自己关的门，永远不再触发。 */
+  if(!S.forceEvent && !S.flags.buDoorShut){
+    const bs = S.flags.buStage || 0;
+    const bw = S.year - (S.flags.buYear || 0);
+    const bAgain = S.flags.buTries ? 3 : 0;
+    if(S.rank === 6 && bs === 0 && S.yearsInRank >= 2 && bw >= bAgain){
+      if((S.flags.buTries || 0) >= 3) S.flags.buDoorShut = true;
+      else S.forceEvent = "bu1";
+    }
+    else if(S.rank === 6 && bs === 1 && bw >= 1) S.forceEvent = "bu2";
+    else if(S.rank === 6 && bs === 2 && bw >= 1) S.forceEvent = "bu3";
+  }
+
   // 冲顶通道：到了正部之后按阶段推进，不再靠每年掷骰子
   if(!S.forceEvent && !S.flags.topDoorShut){
     const st = S.flags.topStage || 0;
@@ -7335,7 +7673,7 @@ function settle(){
   // 外逃窗口：办了境外后路 + 风险到位 → 必然找上门，一生一次
   // 外逃：级别太高走不掉，钱不够也没必要走。处厅级捞了大钱又随时可能落网的人，才会真动这个念头。
   if(S.flags.assetsOut && !S.flags.escapeAsked && !S.forceEvent
-     && S.risk >= 55 && S.rank <= 6 && (S.grey || 0) >= 600 && S.money >= 500){
+     && S.risk >= 48 && S.rank >= 4 && S.rank <= 6 && (S.grey || 0) >= 380 && S.money >= 320){
     S.forceEvent = "escape";
   }
 
@@ -7351,7 +7689,7 @@ function settle(){
   // 家庭崩盘反噬
   if(S.family < 30 && chance(S.family < 15 ? 0.55 : 0.3)){
     const p = -ri(2,5), h = -ri(1,4);
-    S.merit = cl(S.merit+p); S.health = cl(S.health+h);
+    S.merit = clc(S.merit+p); S.health = cl(S.health+h);
     add("merit",p); add("health",h);
     S.notices.push({ t:"家 中", b: S.family<15
       ? (S.flags.married ? "{配偶}提出了分居。你在客厅坐到天亮，第二天照常去上班。\n\n那天的会你走神了两次。"
@@ -7377,18 +7715,73 @@ function ageCoef(target){
   return Math.max(0.35, Math.min(1.15, c));
 }
 
-function rivalTick(){
-  const R = S.rival;
-  if(R.rank>=8) return;
-  const need = PROMO[R.rank+1];
-  if(!need) return;
-  const yrs = S.year - 2026;
-  const expect = [0,4,8,13,19,26,34,43,53][R.rank+1] || 99;
-  if(yrs >= expect && chance(.42)) R.rank++;
+/* ---------- 同届那一批 ----------
+   原来只有「王建」一个人，晋升失败时反复冒出同一个名字，很快就假了。
+   现在开局抽五个同届，各有各的节奏（pace）和各自的下场（fate）——
+   有人一路上去，有人卡在某一级不动了，有人中途出事，有人自己走了。
+   他们的职级是逐年真算的，不是文案里现编的：所以「谁现在到哪儿了」
+   这件事在这一局里始终成立，也随时可以被事件引用。
+------------------------------------------------ */
+const COHORT_NAMES = ["王建","周立","陈志远","孙雅","李国平","马涛","郑晓东",
+                      "何敏","徐立新","杨帆","高建国","钱路","于洋","夏薇"];
+const COHORT_EXPECT = [0, 4, 8, 13, 19, 26, 34, 43, 53];   // 到某一级的"正常年头"
+
+function rollCohort(){
+  const pool = COHORT_NAMES.slice();
+  for(let i=pool.length-1;i>0;i--){ const j=ri(0,i); const t=pool[i]; pool[i]=pool[j]; pool[j]=t; }
+  const n = 5;
+  const out = [];
+  for(let i=0;i<n;i++){
+    out.push({
+      name: pool[i],
+      rank: 0,
+      pace: rnd(0.62, 1.45),   // 小于 1 走得快
+      fate: null,              // null 在岗 · "out"辞职 · "busted"出事 · "gone"病故 · "stuck"卡住
+      fateYear: 0,
+    });
+  }
+  // 主要对照：那个你会一直在心里跟他比的人
+  return out;
 }
 
+/* 每年推一次。快的人四五年一级，慢的人一辈子停在正科。
+   出事和辞职的概率都很低，但四十年下来，五个人里总会有一两个不在岗上。 */
+function cohortTick(){
+  const list = S.cohort || [];
+  const yrs = S.year - 2026;
+  list.forEach(p => {
+    if(p.fate) return;
+    if(p.rank < 8){
+      const expect = (COHORT_EXPECT[p.rank+1] || 99) * p.pace;
+      if(yrs >= expect && chance(.40)) p.rank++;
+    }
+    // 走得越高、越靠钱的位置，出事的概率越高一点
+    if(yrs >= 12 && chance(0.0016 * (1 + p.rank * 0.55))){ p.fate = "busted"; p.fateYear = S.year; return; }
+    if(yrs >= 6 && yrs <= 26 && p.rank <= 3 && chance(0.006)){ p.fate = "out"; p.fateYear = S.year; return; }
+    if(S.age >= 48 && chance(0.0022)){ p.fate = "gone"; p.fateYear = S.year; return; }
+  });
+  // S.rival 始终指向"跟你最有得比的那个"：优先挑在岗、且跟你差距最小的
+  const live = list.filter(p => !p.fate);
+  if(live.length){
+    live.sort((a,b) => Math.abs(a.rank - S.rank) - Math.abs(b.rank - S.rank));
+    S.rival = live[0];
+  }
+}
+// 同届里比你高的那些人，用于晋升失败的文案
+function cohortAbove(){
+  return (S.cohort || []).filter(p => !p.fate && p.rank > S.rank);
+}
+function fateText(p){
+  return p.fate === "busted" ? "已出事"
+       : p.fate === "out"    ? "早年下海"
+       : p.fate === "gone"   ? "已故"
+       : RANKS[p.rank];
+}
+
+
+
 function advanceYear(){
-  rivalTick();
+  cohortTick();
   S.year++; S.age++; S.yearsInRank++;
 
   // 死亡判定
@@ -7721,7 +8114,9 @@ const riskText = r =>
 
 function statBar(nm, v, key, color){
   const d = S.deltas[key];
-  const pct = cl(v);
+  // 政绩/人脉的满格是当前职级的上限，不是 100 —— 条走满意味着「这一级到头了」
+  const max = (key === "merit" || key === "network") ? capOf() : (key === "risk" ? 120 : 100);
+  const pct = Math.max(0, Math.min(100, v / max * 100));
   // 只有「生活线」低了才是危险；政绩/人脉低只是还没积累，开局本来就是 5，不该报红
   const warn = (key === "health" || key === "family") && v < 25;
   const dt = d && Math.abs(d)>=0.5
@@ -8059,12 +8454,19 @@ function renderEnd(){
       <div><span class="k">家庭</span><span>${S.family>=60?"和睦":S.family>=35?"平淡":S.family>=15?"疏远":"破碎"}</span></div>
       <div><span class="k">风评</span><span>${S.risk<12?"清白":S.risk<35?"没什么话说":S.risk<70?"有些传闻":"一言难尽"}</span></div>
       ${(S.grey||0) >= 1 ? `<div><span class="k">其中说不清的</span><span>${yuan(S.grey,0)}${S.seized?`（已追缴 ${yuan(S.seized,0)}）`:""}</span></div>` : ""}
+      ${(S.legacy||0) >= 20 ? `<div><span class="k">留下的东西</span><span>${
+          S.legacy>=85 ? "很多人还在用" : S.legacy>=62 ? "有几样传了下去"
+        : S.legacy>=40 ? "有那么几件" : "不多，但确实有"}</span></div>` : ""}
     </div>
     ${(S.grey||0) >= 30 && !S.busted && !S.escaped ? `<div class="epi"><div class="warnnote">这笔账最后没有人来查。
 
 但它一直在那儿——在你每一次听见陌生号码时的那一下心跳里，在你不敢跟子女讲的那几年里，在你后来所有「幸好」开头的句子里。
 
 没被查到，和没有发生过，是两回事。</div></div>` : ""}
+    ${(()=>{ const co = S.cohort || []; if(!co.length) return "";
+      const rows = co.map(p => `<div><span class="ty">${p.name}</span><span>${fateText(p)}${p.fate?`（${p.fateYear}）`:""}</span></div>`).join("");
+      return `<div class="epi"><div style="font-family:var(--display);font-size:12.5px;color:var(--ink3);letter-spacing:2px;margin-bottom:6px">同 届 那 一 批</div>
+        <div class="timeline">${rows}<div><span class="ty">你</span><span>${RANKS[S.rank]}</span></div></div></div>`; })()}
     ${(()=>{ const ts = activeTraits(); if(!ts.length) return "";
       return `<section class="arch">
         <div class="arch-hd">
@@ -8152,7 +8554,7 @@ const PROMO_SCENES = [
 
 { r:1, sty:"zhuan", cond:(s)=>s.ability>=18, t:(s,c)=>`分管领导找你谈话，一共四分钟。\n\n他说：你写的那几份材料，上面点过名。\n\n你想说那几份材料你熬了多少个晚上，话到嘴边变成了「应该的」。\n\n出门的时候你在走廊里遇到同科室的人，他问你什么事，你说没什么事。\n\n三天后公示挂出来。你才知道那四分钟就是全部的过程——你以为的千军万马，在别人那里只是一句「这个人能写」。` },
 
-{ r:1, sty:"mai", cond:(s)=>s.network>=34||s.flags.mishu, t:(s,c)=>`这件事你是提前两周知道的。\n\n${'那天'}${s.patron.name}在饭桌上给你夹了一筷子菜，说了句「年轻人要沉住气」。你当时没听懂，回家路上想明白了，一夜没怎么睡。\n\n公示挂出来那天你表现得很惊讶，惊讶得很自然。\n\n你${cn(c.age)}岁，第一次知道有些事在正式宣布之前就已经结束了。` },
+{ r:1, sty:"mai", cond:(s)=>pctOf(s.network) >= 34||s.flags.mishu, t:(s,c)=>`这件事你是提前两周知道的。\n\n${'那天'}${s.patron.name}在饭桌上给你夹了一筷子菜，说了句「年轻人要沉住气」。你当时没听懂，回家路上想明白了，一夜没怎么睡。\n\n公示挂出来那天你表现得很惊讶，惊讶得很自然。\n\n你${cn(c.age)}岁，第一次知道有些事在正式宣布之前就已经结束了。` },
 
 { r:1, sty:"jia", cond:(s)=>s.family<38, t:(s,c)=>`你把消息发到家里群里，配了一个笑脸。\n\n你妈回了三个感叹号。${s.flags.married ? "你爱人回了「嗯」。" : "群里其他人陆续冒了两个泡，然后就没有然后了。"}\n\n这半年你回家的次数一只手数得过来。你知道那个「嗯」是什么意思，但你今天不想去想它。\n\n晚上你还是加班到九点。文件就在那儿，不会因为你升了半级就自己批完。` },
 
@@ -8176,9 +8578,9 @@ const PROMO_SCENES = [
 // ========== →副处 ==========
 { r:3, sty:"base", t:(s,c)=>`处级是一道坎。\n\n全县两千多名干部，跨过这道坎的不到两百个。你在${RANKS[2]}这个位置上待了${cn(c.yrs)}年，中间报过三次名额，前两次都没有你。\n\n宣布的那天你坐在会议室第二排，念到你名字的时候，你正在低头看手机上的一条无关消息。\n\n散会后有五个人跟你握手，其中两个你叫不出全名。\n\n${'同届那个'+c.rival+'现在还是'+c.rivalRank+'。'}` },
 
-{ r:3, sty:"zhuan", cond:(s)=>s.ability>=55&&s.network<62, t:(s,c)=>`会上介绍你的时候，用的词是「专业型干部」。\n\n这四个字听着是夸奖。你后来才知道，它同时也是一句判词——意思是这个人能干活，但不太会来事。\n\n散会后没有人叫你吃饭。你回办公室，把下周的方案又改了一稿。\n\n窗外天黑了。你想，能干活就能干活吧，总得有人干。` },
+{ r:3, sty:"zhuan", cond:(s)=>s.ability>=55&&pctOf(s.network) < 62, t:(s,c)=>`会上介绍你的时候，用的词是「专业型干部」。\n\n这四个字听着是夸奖。你后来才知道，它同时也是一句判词——意思是这个人能干活，但不太会来事。\n\n散会后没有人叫你吃饭。你回办公室，把下周的方案又改了一稿。\n\n窗外天黑了。你想，能干活就能干活吧，总得有人干。` },
 
-{ r:3, sty:"mai", cond:(s)=>s.network>=68, t:(s,c)=>`这一步走得很顺，顺到你自己都有点意外。\n\n后来你把这几年吃过的饭在心里过了一遍：一共大概两百多顿，其中一百多顿你并不想去。\n\n那一百多顿饭，换来了今天这一行字。\n\n划不划算你不知道。反正胃是坏了。` },
+{ r:3, sty:"mai", cond:(s)=>pctOf(s.network) >= 68, t:(s,c)=>`这一步走得很顺，顺到你自己都有点意外。\n\n后来你把这几年吃过的饭在心里过了一遍：一共大概两百多顿，其中一百多顿你并不想去。\n\n那一百多顿饭，换来了今天这一行字。\n\n划不划算你不知道。反正胃是坏了。` },
 
 { r:3, sty:"bing", cond:(s)=>s.health<52, t:(s,c)=>`宣布任命那天上午，你在医院拿的体检报告。\n\n报告上有三个箭头朝上。医生说不算太要紧，但要注意。\n\n下午你把报告折起来塞进包的最里层，去开了会。会上你坐得很直。\n\n晚上应酬，你喝了四两。回家路上你想起医生那句「要注意」，然后想：等这一阵忙完。\n\n这一阵，你已经等了${cn(Math.max(3,c.age-30))}年。` },
 
@@ -8294,14 +8696,16 @@ function evaluatePromotion(){
     if(S.risk >= (S.flags.recused ? 26 : 15)) fails.push("考察期间，有人反映了一些情况。");
     if(S.ability < 64) fails.push("同志们认为在专业素养上还需要再沉淀。");
     if(!(S.flags.bigwin || S.flags.crisis)) fails.push("履历很完整，但缺一件真正扛过事的经历。");
-    if(S.merit < 76) fails.push("分量还差一点。差的这一点，没有人说得出具体是什么。");
-    if(S.network < 70) fails.push("推荐环节，票数不够。");
+    if(pctOf(S.merit) < 76) fails.push("分量还差一点。差的这一点，没有人说得出具体是什么。");
+    if(pctOf(S.network) < 70) fails.push("推荐环节，票数不够。");
     if(S.health < 45) fails.push("体检结论，不予通过。");
     if(fails.length){
       if(chance(.5)) S.promoMsg = { fail:true, txt:"考察组来了，谈了三天，然后走了。\n\n很久以后你才辗转听到一句评价：\n\n「"+pick(fails)+"」" };
       return;
     }
   }
+  // 部级这道墙：没走通进部链，正常评定也不是不行，只是要高出一档
+  const needAdj = (t === 7 && !S.flags.buDone) ? 12 : 0;
   const wait = Math.max(0, S.yearsInRank - p.years);
   const slotP = Math.min(0.85, p.slot * m.slotMul * (1 + 0.12*wait));
   if(!chance(slotP)){
@@ -8311,11 +8715,15 @@ function evaluatePromotion(){
   // 政绩是门票，人脉和能力是两条并行的路：会来事的靠人脉，能干活的靠能力
   // 能力本身没有上限（越老学得越慢就是它的天花板），但它对晋升的贡献封顶——
   // 到了一定程度，组织上认的是"够专业"，不是"有多专业"。
-  const abScore = Math.min(23, S.ability * 0.25);
-  const score = (S.merit*0.42 + S.network*0.27 + abScore + rnd(0,100)*0.18) * ageCoef(t) + tSum("promo")
+  // 归一化：组织看的是「你在你这一级里做到了几成」，不是绝对数字。
+  // 于是刚升上去的那一年，你的政绩人脉一点没少，分数却掉了一整档。
+  const mN = pctOf(S.merit), nN = pctOf(S.network);
+  // 能力的封顶随职级放宽：越往上，「够专业」这三个字的分量越重
+  const abScore = Math.min(20 + S.rank * 2.5, S.ability * 0.25);
+  const score = (mN*0.42 + nN*0.27 + abScore + rnd(0,100)*0.18) * ageCoef(t) + tSum("promo")
         + (S.circle.in && !S.circle.fell ? 5 : 0) - (S.circle.fell ? 9 : 0)
         - (!S.flags.married && !S.flags.divorced && S.age >= 34 ? (S.age >= 44 ? 6 : 4) : 0);
-  if(score >= p.need){
+  if(score >= p.need + needAdj){
     if(t === 9){                        // 副国级即终局：先出任命通知，玩家点了才进结局
       S.rank = 9; S.topped = true; S.flags.topDone = true;
       S.yearsInRank = 0;
@@ -8325,7 +8733,7 @@ function evaluatePromotion(){
       return;
     }
     const waitedYears = S.yearsInRank;
-    S.rank = t; S.yearsInRank = 0; S.merit *= 0.74;
+    S.rank = t; S.yearsInRank = 0; S.merit *= 0.85;   // 上限抬高本身就是一次稀释，这里不再砍狠
     if(t===8) S.flags.zhengbuInTime = true;   // 硬门槛已由冲顶链承担，此处不再卡年龄
     S.log.push([S.year, "晋升为 " + RANKS[t]]);
     const base = RETIRE_AGE(t), plus = S.retireAge>65 ? S.retireAge-65 : 0;
@@ -8333,7 +8741,9 @@ function evaluatePromotion(){
     const scene = promoScene(t, waitedYears) || "任前公示挂出来了，你的名字在第一个。";
     S.promoMsg = { fail:false, promo:true, from:RANKS[t-1], to:RANKS[t], txt:scene };
   } else {
-    const who = `同年入职的${S.rival.name}（现${RANKS[S.rival.rank]}）`;
+    const up = cohortAbove();
+    const one = up.length ? pick(up) : S.rival;
+    const who = one ? `同年入职的${one.name}（现${RANKS[one.rank]}）` : "另一位同志";
     S.promoMsg = { fail:true, txt:`名单公布了。\n\n本次提拔的是${who}。\n\n你把文件从头到尾看了两遍。` };
   }
 }
