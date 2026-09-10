@@ -463,9 +463,8 @@ header.doc{padding:26px 0 0; text-align:center}
 .statusbar .wv{line-height:1.5}
 .tcard .ti{padding:8px 0; border-bottom:1px dotted var(--line2)}
 .tcard .ti:last-child{border-bottom:0}
-/* 档案条目多的时候自己滚，别把上面的属性条顶出去 */
-.tlist{max-height:34dvh; overflow-y:auto; overscroll-behavior:contain;
-  -webkit-overflow-scrolling:touch; padding-right:4px}
+/* 档案就跟着上半截一起滚，不再单独套一层滚动条 */
+.tlist{}
 .tcount{float:right; font-weight:400; letter-spacing:1px; color:var(--ink3); font-size:11.5px}
 
 /* ============ 指标 ============ */
@@ -966,6 +965,19 @@ function famNote(){
        : f >= 42 ? "还过得去"
        : f >= 26 ? "家里的事开始占你的精力了"
        : "后院这个样子，外面的人是看得出来的";
+}
+
+/* 进入副国级考察视野时给一张「要看哪几样」。
+   之前玩家只能从失败文案里倒推门槛，而失败文案一次只报一条，
+   于是「条件都满足了还是不过」。这张单子把四项一次列清楚。 */
+function topChecklist(s){
+  const line = (ok, name, note) => (ok ? "　✓ " : "　✗ ") + name + "　" + note;
+  const riskLine = s.flags.recused ? 34 : 24;
+  return "\n\n——\n\n这一层的考察，看的是四样：\n\n"
+    + line(s.risk < riskLine, "干　净", s.risk < riskLine ? "经得起翻" : "有几件事经不起从头查一遍") + "\n"
+    + line(s.health >= 42, "身　体", s.health >= 42 ? "撑得住" : "体检那一关先过不去") + "\n"
+    + line(!!(s.flags.bigwin || s.flags.crisis), "扛过事", (s.flags.bigwin || s.flags.crisis) ? "履历上有一件立得住的" : "履历很完整，完整得像一份没有起伏的档案") + "\n"
+    + line(s.ability >= 50, "专业底子", s.ability >= 50 ? "够了" : "「尚可」两个字，在这个层级是差评");
 }
 
 /* ---------- 学习效率：越老学得越慢。年龄本身就是天花板，不另设上限 ---------- */
@@ -4990,13 +5002,13 @@ const EVENTS = [
   opts:[
     { t:"什么都不做，照常上班", cost:1, eff:{merit:5,risk:-4},
       fn:s=>{ s.flags.topStage=1; s.flags.topStageYear=s.year; s.flags.topQuiet=true; s.flags.topTries=(s.flags.topTries||0)+1;
-        s.pendMsg="接下来的半年你什么都没变：一样开会，一样批文件，一样六点半到办公室。\n\n有人来试探，你都笑着岔开了。\n\n【进入考察视野 · 你选择了最稳的那种姿态】"; } },
+        s.pendMsg="接下来的半年你什么都没变：一样开会，一样批文件，一样六点半到办公室。\n\n有人来试探，你都笑着岔开了。\n\n【进入考察视野 · 你选择了最稳的那种姿态】" + topChecklist(s); } },
     { t:"该走动的走动，让该知道的人知道", cost:3, eff:{network:14,risk:12},
       fn:s=>{ s.flags.topStage=1; s.flags.topStageYear=s.year; s.flags.topPush=true; s.flags.topTries=(s.flags.topTries||0)+1;
-        s.pendMsg="你见了几个人，说了些很含蓄的话。\n\n效果是有的——你的名字从「几个人」里被单独提出来过一次。\n\n代价也是有的：有人开始注意你最近在见谁。\n\n【进入考察视野 · 但你留下了痕迹】"; } },
+        s.pendMsg="你见了几个人，说了些很含蓄的话。\n\n效果是有的——你的名字从「几个人」里被单独提出来过一次。\n\n代价也是有的：有人开始注意你最近在见谁。\n\n【进入考察视野 · 但你留下了痕迹】" + topChecklist(s); } },
     { t:"主动表态：年龄大了，让年轻人来", eff:{network:9,merit:-6},
       fn:s=>{ s.flags.topStage=1; s.flags.topStageYear=s.year; s.flags.topHumble=true; s.flags.topTries=(s.flags.topTries||0)+1;
-        s.pendMsg="你在一次谈话里说了这句话，说得很诚恳。\n\n对方看了你几秒，说：这个不是你说了算的。\n\n这句话你回味了很久。它可能是拒绝，也可能是别的意思。\n\n【进入考察视野 · 以退为进】"; } },
+        s.pendMsg="你在一次谈话里说了这句话，说得很诚恳。\n\n对方看了你几秒，说：这个不是你说了算的。\n\n这句话你回味了很久。它可能是拒绝，也可能是别的意思。\n\n【进入考察视野 · 以退为进】" + topChecklist(s); } },
   ]},
 
 { id:"top2", w:0, force:true, tag:"顶 局",
@@ -5014,8 +5026,12 @@ const EVENTS = [
           s.flags.topStage=0; s.flags.topStageYear=s.year; s.risk=cl(s.risk-6,0,140);
           const shut = (s.flags.topTries||0) >= 4;
           if(shut) s.flags.topDoorShut = true;
-          s.pendMsg="谈话结束得很平静。\n\n三个月后考察组撤了，没有下文。\n\n很久之后你才听到一句：\n\n「"+pick(bad)+"」\n\n"
-            + (shut ? "【这一次之后，再没有人提起过你的名字】" : "【考察未通过 · 若干年后或许还有机会】");
+          /* 原来这里是 pick(bad)：四条门槛差三条，也只报一条。
+             玩家把那条补上，下次又报另一条——体感就成了「条件都满足了还是不过」。
+             现在一次说完，缺什么一目了然。 */
+          s.pendMsg="谈话结束得很平静。\n\n三个月后考察组撤了，没有下文。\n\n很久之后你才辗转听到几句：\n\n"
+            + bad.map(x=>"「"+x+"」").join("\n")
+            + "\n\n" + (shut ? "【这一次之后，再没有人提起过你的名字】" : "【考察未通过 · 若干年后或许还有机会】");
         } else {
           s.flags.topStage=2; s.flags.topStageYear=s.year; s.risk=cl(s.risk-12,0,140);
           s.pendMsg="你说了四个多小时。有些事你自己都快忘了。\n\n组长一直在记，中间没有打断过你一次。\n\n最后他合上本子，说：谢谢你说这些。\n\n【考察通过 · 只剩最后一步】";
@@ -5023,7 +5039,12 @@ const EVENTS = [
       } },
     { t:"说：没有", eff:{},
       fn:s=>{
-        const clean = s.risk < 12 && (s.flags.bigwin || s.flags.crisis) && s.health >= 45 && s.ability >= 55;
+        const gap = [];
+        if(s.risk >= 12) gap.push("有人反映了一些情况，跟你说的对不上。");
+        if(!(s.flags.bigwin || s.flags.crisis)) gap.push("履历上缺一件真正扛过事的经历。");
+        if(s.health < 45) gap.push("体检结论，不予通过。");
+        if(s.ability < 55) gap.push("专业素养这一项，评价是「还需再沉淀」。");
+        const clean = gap.length === 0;
         if(clean){
           s.flags.topStage=2; s.flags.topStageYear=s.year;
           s.pendMsg="你说得很干脆。\n\n组长笑了一下，说：这句话我这些年听过很多次，能站得住的不多。\n\n二十天后他们撤了。你的材料一路往上走。\n\n【考察通过 · 只剩最后一步】";
@@ -5032,6 +5053,7 @@ const EVENTS = [
           const shut = (s.flags.topTries||0) >= 4;
           if(shut) s.flags.topDoorShut = true;
           s.pendMsg="你说得很干脆。\n\n组长点点头，没有接话，翻过了那一页。\n\n后来什么消息也没有。你到很久以后才明白，那个问题不是问你有没有，是问你敢不敢说。\n\n"
+            + gap.map(x=>"「"+x+"」").join("\n") + "\n\n"
             + (shut ? "【三次都停在同一道门口。这一次你知道不会再有第四次了】" : "【考察未通过】");
         }
       } },
@@ -5043,8 +5065,10 @@ const EVENTS = [
   opts:[
     { t:"接。两年里什么都不管，只干这一件", cost:5, eff:{health:-14,family:-16},
       fn:s=>{
-        const score = s.merit*0.42 + s.network*0.30 + s.ability*0.20 + rnd(0,26);
-        if(score >= 96){
+        // 跟 evaluatePromotion 用同一把尺：看的是「你在正部这一级做到了几成」。
+        // 原来这里用的是原始值，上限改成按职级递增之后，政绩单项就能顶掉整条分数线。
+        const score = pctOf(s.merit)*0.42 + pctOf(s.network)*0.30 + Math.min(28, s.ability*0.22) + rnd(0,26);
+        if(score >= 92){
           return topAppointment(s);
         } else {
           s.flags.topStage=0; s.flags.topStageYear=s.year; s.merit = clc(s.merit-10);
@@ -5053,8 +5077,8 @@ const EVENTS = [
       } },
     { t:"接，但按常规节奏推，不拿命换", cost:3, eff:{health:-6,family:-4},
       fn:s=>{
-        const score = s.merit*0.42 + s.network*0.30 + s.ability*0.20 + rnd(0,26);
-        if(score >= 112){
+        const score = pctOf(s.merit)*0.42 + pctOf(s.network)*0.30 + Math.min(28, s.ability*0.22) + rnd(0,26);
+        if(score >= 108){
           return topAppointment(s);
         } else {
           s.flags.topStage=0; s.flags.topStageYear=s.year;
