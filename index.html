@@ -463,8 +463,7 @@ header.doc{padding:26px 0 0; text-align:center}
 .statusbar .wv{line-height:1.5}
 .tcard .ti{padding:8px 0; border-bottom:1px dotted var(--line2)}
 .tcard .ti:last-child{border-bottom:0}
-/* 档案就跟着上半截一起滚，不再单独套一层滚动条 */
-.tlist{}
+
 .tcount{float:right; font-weight:400; letter-spacing:1px; color:var(--ink3); font-size:11.5px}
 
 /* ============ 指标 ============ */
@@ -485,6 +484,18 @@ header.doc{padding:26px 0 0; text-align:center}
 .enrow .nm{font-family:var(--display); font-size:13.5px; font-weight:800; color:var(--red); letter-spacing:1px; white-space:nowrap}
 .lockhint{margin-top:9px; padding-top:9px; border-top:1px dashed var(--line); font-family:var(--display); font-size:11.5px; color:var(--ink3);
   letter-spacing:.5px; font-style:italic}
+/* 一行两栏：左边「后方」，右边「巡视」，中间一道竖线 */
+.duo{display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  margin-top:9px; padding-top:9px; border-top:1px dashed var(--line);
+  font-family:var(--display); font-size:12.5px; color:var(--ink3)}
+.duo .nm{font-weight:800; color:var(--ink2); letter-spacing:1px; white-space:nowrap; font-size:12.5px}
+.duo .vl{white-space:nowrap; margin-right:auto}
+.duo i{display:block; width:1px; height:13px; background:var(--line); flex:none}
+.duo i + .nm{margin-left:2px}
+.duo i ~ .vl{margin-right:0}
+.duo .nm.warn{color:var(--red)}
+.duo .nm.warn + .vl{color:var(--red); font-weight:800}
+@media(max-width:430px){ .duo .vl{margin-right:0} .duo{gap:6px} }
 .inspect{display:flex; justify-content:space-between; align-items:center; gap:12px;
   margin-top:9px; padding-top:9px; border-top:1px dashed var(--line)}
 .inspect .nm{font-family:var(--display); font-size:13px; font-weight:800; color:var(--ink2); letter-spacing:1px; white-space:nowrap}
@@ -958,13 +969,14 @@ function famPromo(){
   return f >= 72 ? 3 : f >= 52 ? 1 : f >= 30 ? 0 : f >= 18 ? -3 : -6;
 }
 // 属性面板上给一句话，让玩家看得见它在起作用
+// 属性面板是仪表盘不是散文，这里只给四个字
 function famNote(){
   const f = S.family;
-  return f >= 78 ? "后方很稳 · 出去办事有人替你说话"
-       : f >= 60 ? "家里没什么事 · 你能把心思放在外面"
+  return f >= 78 ? "很　稳"
+       : f >= 60 ? "没什么事"
        : f >= 42 ? "还过得去"
-       : f >= 26 ? "家里的事开始占你的精力了"
-       : "后院这个样子，外面的人是看得出来的";
+       : f >= 26 ? "开始拖后腿"
+       : "后院起火";
 }
 
 /* 进入副国级考察视野时给一张「要看哪几样」。
@@ -8306,15 +8318,19 @@ function panelStats(){
       ${statBar("家　庭", S.family, "family", "fam")}
       ${statBar("风　险", S.risk, "risk", "risk")}
     </div>
-    <div class="inspect${S.family < 30 ? " hot" : ""}"><span class="nm">后　方</span><span class="vl">${famNote()}</span></div>
+    ${(()=>{
+      // 「后方」和「巡视」并成一行两栏：上半截是钉住的，能省一行是一行
+      const fam = `<span class="nm${S.family < 30 ? " warn" : ""}">后　方</span><span class="vl">${famNote()}</span>`;
+      let insp = "";
+      if(!S.retired && S.nextInspect){
+        const d = S.nextInspect - S.year;
+        const txt = d <= 0 ? "今年进驻" : d === 1 ? "明年就来" : `约 ${cn(d)} 年后`;
+        insp = `<span class="nm${d<=1?" warn":""}">巡　视</span><span class="vl">${txt}</span>`;
+      }
+      return `<div class="duo">${fam}${insp ? `<i></i>${insp}` : ""}</div>`;
+    })()}
     ${(!S.retired && S.rank >= 3 && S.risk < 20)
       ? `<div class="lockhint">有些事，得先有人觉得你靠得住</div>` : ""}
-    ${(!S.retired && S.nextInspect) ? (()=>{
-      const d = S.nextInspect - S.year;
-      const txt = d <= 0 ? "巡视组今年进驻" : d === 1 ? "明年就要来巡视了" : `下一轮巡视 · 大约 ${cn(d)} 年后`;
-      const hot = d <= 1;
-      return `<div class="inspect${hot?" hot":""}"><span class="nm">巡　视</span><span class="vl">${txt}</span></div>`;
-    })() : ""}
     <div class="enrow">
       <span class="nm">本年精力</span>
       <span class="epips">${pips}</span>
@@ -8381,9 +8397,11 @@ function panelStatus(){
   </div>`;
 }
 
-/* 档案单独一个面板。原来它挂在 panelStatus 的尾巴上，于是展开以后
-   插在状态栏和属性条中间，把政绩人脉那一排整个挤出了上半截的可视区。
-   现在排在属性条后面，列表自己滚（.tlist）。 */
+/* 档案单独一个面板，而且放在**下半截**。
+   它原来挂在 panelStatus 尾巴上，展开后插在状态栏和属性条中间，把政绩人脉整排挤出可视区；
+   后来挪到属性条后面，又变成一展开就把上半截撑满、滚它等于把属性面板一起滚走。
+   档案是「翻开来读」的东西，不是常驻的仪表盘——放进剧情那一栏最合适：
+   不用嵌套滚动条，属性面板也一动不动。 */
 function panelTraits(){
   const tr = activeTraits();
   if(!S.showTraits || !tr.length) return "";
@@ -8474,8 +8492,8 @@ function render(){
   if(S.phase==="end") return renderEnd();
   if(S.phase==="retired") return renderRetired();
 
-  paintTop(panelStatus() + panelStats() + panelTraits());
-  let h = panelNotices() + `<div id="focus"></div>`;
+  paintTop(panelStatus() + panelStats());
+  let h = panelTraits() + panelNotices() + `<div id="focus"></div>`;
 
   if(S.phase==="event"){
     const e = S.curEv;
@@ -8616,8 +8634,8 @@ function renderTitle(){
 function renderRetired(){
   const rd = S.retireRound || 0;
   const btn = ["往后的日子 →", "再往后 →", "又几年 →", "此　后 →"][Math.min(rd, 3)];
-  paintTop(panelStatus() + panelStats() + panelTraits());
-  const h = `
+  paintTop(panelStatus() + panelStats());
+  const h = panelTraits() + `
   <div class="card">
     <div class="sec-title">退 休 生 活</div>
     <div class="ev-text">${fmt(S.retireNote) || "你办完了手续。走出大院那天阳光很好。\n\n门卫跟你说了句「领导慢走」，这是最后一次有人这么叫你。"}</div>
