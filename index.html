@@ -350,14 +350,71 @@ body.dark-hour .sun2 i{ display:none }
   .sun2 i{ display:none }
 }
 
-.wrap{max-width:820px; margin:0 auto; padding:0 16px 80px}
-/* min-height 是给 .paperlight 用的：那一层 top:0/bottom:0 撑的是 .wrap 的高度，
-   首页内容只有半屏，纸就在页脚下面断了 —— 窗影跟着断出一条横贯屏幕的硬边。
-   纸必须至少铺满一屏，影子才没有尽头。 */
-.wrap{position:relative; z-index:1; min-height:100vh}
+/* ============ 两栏独立滚动 ============
+   属性面板要一直看得见，剧情又常常很长——两者塞在同一条滚动轴上，
+   看一眼政绩就得把剧情滚走。所以拆成上下两个滚动容器：
+   上面钉住，下面自己滚，overscroll-behavior:contain 断掉滚动链，
+   在下面滑到底也不会带着上面一起动。
+
+   高度用 dvh：手机浏览器的地址栏收起来时 vh 是不变的，dvh 才跟着变，
+   用 vh 会让下半截被地址栏盖掉一条。先写 vh 兜底老浏览器。 */
+html, body{ height:100%; }
+body{ overflow:hidden; }
+.wrap{max-width:820px; margin:0 auto; padding:0 16px;
+  height:100vh; height:100dvh; display:flex; flex-direction:column}
+/* .wrap 现在正好一屏高，.paperlight（top:0/bottom:0）自然铺满，
+   当年那条横贯屏幕的明暗硬边不会再出现。 */
+.wrap{position:relative; z-index:1}
+
+.pane-top{
+  flex:0 0 auto; max-height:54dvh; overflow-y:auto; overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  /* 两栏之间给一道很轻的界：不画线，用一点阴影暗示下面还有东西 */
+  padding-bottom:2px;
+  mask-image:none;
+}
+.pane-flow{
+  flex:1 1 auto; min-height:0;      /* min-height:0 不能省，否则 flex 子项不肯收缩，滚动条不出现 */
+  overflow-y:auto; overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:56px;
+  position:relative;
+}
+/* 下半截顶部的一道渐隐，表示内容是从上面滑进来的 */
+.pane-flow::before{
+  content:""; position:sticky; top:0; display:block; height:10px; margin-bottom:-10px;
+  background:linear-gradient(rgba(58,40,14,.055), rgba(58,40,14,0));
+  pointer-events:none; z-index:3;
+}
+/* 结局页和标题页不需要上半截占地方 */
+.wrap.solo .pane-top{ max-height:none }
+.wrap.solo #topbar{ display:none }
 
 /* ============ 红头 ============ */
 header.doc{padding:26px 0 0; text-align:center}
+/* 开局之后红头就不需要那么大了：上半截是钉住的，它多占一寸，剧情就少一寸 */
+.wrap.playing header.doc{padding:8px 0 0}
+.wrap.playing .doc h1{font-size:clamp(17px,4.4vw,24px); letter-spacing:clamp(3px,1.4vw,9px); text-indent:clamp(3px,1.4vw,9px)}
+.wrap.playing .doc .sub{display:none}
+.wrap.playing .rule{margin:7px 0 2px}
+.wrap.playing .rule.thin{margin:0 0 10px}
+/* 上半截是钉住的，垂直节奏整体收一档，让属性面板在手机上一屏放得下 */
+.wrap.playing .statusbar{padding:8px 14px; gap:6px 14px; margin-bottom:10px}
+.wrap.playing .card.tight{padding:11px 14px; margin:10px 0}
+.wrap.playing .stats{gap:6px 18px}
+.wrap.playing .enrow{margin-top:8px; padding-top:8px}
+.wrap.playing .moneyrow{margin-top:8px; padding-top:8px}
+.wrap.playing .inspect{margin-top:7px; padding-top:7px}
+.wrap.playing .lockhint{margin-top:7px; padding-top:7px}
+
+/* 上半截真的溢出时，底边给一道渐隐——不然内容会从中间被齐刷刷切断，
+   看着像渲染坏了。渐隐只在有得滚的时候才出现（靠 sticky 贴在容器底边）。 */
+.pane-top{ position:relative }
+.topfade{
+  position:sticky; bottom:0; display:block; height:16px; margin-top:-16px;
+  background:linear-gradient(rgba(232,228,217,0), rgba(232,228,217,.92));
+  pointer-events:none; z-index:4;
+}
 .doc h1{
   font-family:var(--serif); font-weight:700;
   color:var(--red); margin:0;
@@ -406,6 +463,10 @@ header.doc{padding:26px 0 0; text-align:center}
 .statusbar .wv{line-height:1.5}
 .tcard .ti{padding:8px 0; border-bottom:1px dotted var(--line2)}
 .tcard .ti:last-child{border-bottom:0}
+/* 档案条目多的时候自己滚，别把上面的属性条顶出去 */
+.tlist{max-height:34dvh; overflow-y:auto; overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch; padding-right:4px}
+.tcount{float:right; font-weight:400; letter-spacing:1px; color:var(--ink3); font-size:11.5px}
 
 /* ============ 指标 ============ */
 .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:9px 20px}
@@ -703,15 +764,21 @@ button:focus-visible{outline:2px solid var(--red); outline-offset:2px}
 <div class="wrap">
 <div class="paperlight" aria-hidden="true"></div>
 
-<header class="doc">
-  <h1>铁饭碗模拟器</h1>
-  <div class="sub">青 阳 县 · 二 〇 二 六 年 度 新 录 用 人 员 档 案</div>
-  <hr class="rule"><hr class="rule thin">
-</header>
+<!-- 上半：红头 + 属性面板。自己一个滚动容器，翻页时不动。 -->
+<div class="pane-top" id="paneTop">
+  <header class="doc">
+    <h1>铁饭碗模拟器</h1>
+    <div class="sub">青 阳 县 · 二 〇 二 六 年 度 新 录 用 人 员 档 案</div>
+    <hr class="rule"><hr class="rule thin">
+  </header>
+  <div id="topbar"></div>
+</div>
 
-<div id="app"></div>
-
-<div class="foot">本作纯属虚构 · 云江省 / 临川市 / 青阳县 及文中人物、机构均为架空</div>
+<!-- 下半：剧情、选项、加点。独立滚动，跟上面互不牵连。 -->
+<div class="pane-flow" id="paneFlow">
+  <div id="app"></div>
+  <div class="foot">本作纯属虚构 · 云江省 / 临川市 / 青阳县 及文中人物、机构均为架空</div>
+</div>
 </div>
 
 <script>
@@ -796,13 +863,13 @@ const PROMO = [
   null,
   { years:3, line:30, slot:.60, need:34 },  // →副科
   { years:3, line:35, slot:.50, need:48 },  // →正科
-  { years:4, line:40, slot:.42, need:62 },  // →副处
-  { years:4, line:45, slot:.35, need:74 },  // →正处
-  { years:4, line:50, slot:.20, need:88 },  // →副厅
-  { years:4, line:55, slot:.16, need:92 },  // →正厅
-  { years:3, line:58, slot:.20, need:101 }, // →副部  ← 部级这道墙：能力和机遇缺一不可
-  { years:2, line:63, slot:.24, need:104 }, // →正部
-  { years:4, line:65, slot:.16, need:113 }, // →副国级
+  { years:4, line:40, slot:.42, need:64 },  // →副处
+  { years:4, line:45, slot:.35, need:78 },  // →正处
+  { years:4, line:50, slot:.20, need:90 },  // →副厅
+  { years:4, line:55, slot:.16, need:94 },  // →正厅
+  { years:3, line:58, slot:.20, need:109 }, // →副部  ← 部级这道墙：能力和机遇缺一不可
+  { years:2, line:63, slot:.24, need:112 }, // →正部
+  { years:4, line:65, slot:.16, need:119 }, // →副国级
 ];
 const RETIRE_AGE = r => r>=8 ? 999 : r>=7 ? 70 : r>=5 ? 68 : 65;
 const SALARY = [7,9,11,14,17,21,25,30,36,44]; // 万元/年，11 级一一对应（上层刻意压平：升官给的是权力，不是钱）
@@ -871,6 +938,35 @@ const WAVES = [
     mods:{ familyMul:1.4 }, tag:"aging" },
 ];
 
+
+/* ---------- 家庭的作用 ----------
+   旧版里家庭只在结局那张纸上被清算，过程中是个纯消耗的槽 ——
+   玩家的体感因此变成了「老婆是累赘」。
+
+   可后方稳不稳，在这栋楼里是看得见的：
+   家里没事的人，饭局带得出去、话有人替他说、第二天有精神；
+   家里出事的人，先是开始缺席，然后是别人不再叫他。
+   所以家庭现在同时是三个乘区的输入 —— 人脉产出、身体衰减、每年精力 ——
+   外加晋升评分里的一项（组织考察那一栏本来就叫「家庭情况」）。
+------------------------------------------------ */
+function famCoef(){
+  const f = S ? S.family : 60;
+  return f >= 78 ? 1.13 : f >= 62 ? 1.08 : f >= 46 ? 1.03 : f >= 32 ? 0.97 : f >= 20 ? 0.90 : 0.80;
+}
+// 家庭对晋升评分的加减：好是一点小加成，破碎是实打实的减分
+function famPromo(){
+  const f = S.family;
+  return f >= 72 ? 3 : f >= 52 ? 1 : f >= 30 ? 0 : f >= 18 ? -3 : -6;
+}
+// 属性面板上给一句话，让玩家看得见它在起作用
+function famNote(){
+  const f = S.family;
+  return f >= 78 ? "后方很稳 · 出去办事有人替你说话"
+       : f >= 60 ? "家里没什么事 · 你能把心思放在外面"
+       : f >= 42 ? "还过得去"
+       : f >= 26 ? "家里的事开始占你的精力了"
+       : "后院这个样子，外面的人是看得出来的";
+}
 
 /* ---------- 学习效率：越老学得越慢。年龄本身就是天花板，不另设上限 ---------- */
 function studyEffText(){
@@ -1120,160 +1216,160 @@ const TRAITS = [
 
   { id:"b_penfast", born:true, fam:"写", name:"笔头快",   from:"大学四年的学生会材料",
     desc:"别人写到凌晨三点的东西，你两个小时出一稿。质量不一定更好，但先交上去的那份往往就成了定稿。",
-    eff:{ workMul:1.10 } },
+    eff:{ workMul:1.17 } },
   { id:"b_detail",  born:true, fam:"写", name:"不出错",   from:"小时候抄错一个字要重抄一整页",
     desc:"你交上去的东西没有人需要再看第二遍。这件事不会被表扬，但会在某个你不在场的场合被人提起。",
-    eff:{ workMul:1.06, promo:1 } },
+    eff:{ workMul:1.1, promo:2 } },
   { id:"b_bigpic",  born:true, fam:"写", name:"拎得清",   from:"看什么都先翻目录",
     desc:"一份三十页的材料，你一眼能看出哪三句是领导要的。剩下二十七页是给别人看的。",
-    eff:{ workMul:1.07, meritDecay:0.92 } },
+    eff:{ workMul:1.12, meritDecay:0.86 } },
   { id:"b_tireless",born:true, fam:"写", name:"坐得住",   from:"高中三年没换过座位",
     desc:"你能一个人在办公室待到十点半，不焦躁，也不觉得委屈。这不是能力，是体质。",
-    eff:{ energy:1, workHp:1.14 } },
+    eff:{ energy:1, workHp:1.24 } },
 
   // —— 会来事 ——
   { id:"b_remember",born:true, fam:"嘴", name:"记得住人", from:"小时候跟着父亲跑遍半个县",
     desc:"见过一面的人，隔三年你还能叫出名字，还能问一句他孩子考得怎么样。这件事的价值要很多年以后才看得出来。",
-    eff:{ relMul:1.12 } },
+    eff:{ relMul:1.2 } },
   { id:"b_table",   born:true, fam:"嘴", name:"场面上不怯", from:"家里常年有客",
     desc:"再大的桌子你坐下去都不慌。该敬谁、什么时候敬、说什么，你不用想。",
-    eff:{ relMul:1.10, netDecay:0.94 } },
+    eff:{ relMul:1.17, netDecay:0.9 } },
   { id:"b_listen",  born:true, fam:"嘴", name:"听得出话音", from:"母亲从来不把话说完",
     desc:"领导说「这个事你再考虑考虑」，别人回去真的去考虑，你知道该停在哪儿。",
-    eff:{ relMul:1.07, promo:1 } },
+    eff:{ relMul:1.12, promo:2 } },
   { id:"b_lowkey",  born:true, fam:"嘴", name:"不招人恨", from:"从小是那种谁都说不出他坏话的孩子",
     desc:"你没有什么特别突出的地方，但每次民主推荐，你的票都不少。",
-    eff:{ promo:2, riskYear:-0.3 } },
+    eff:{ promo:3, riskYear:-0.45 } },
 
   // —— 学 ——
   { id:"b_quick",   born:true, fam:"学", name:"学得快",   from:"看一遍就会",
     desc:"别人要报班的东西，你翻两天文件就上手了。这个优势会随着年纪一年一年地还回去。",
-    eff:{ studyMul:1.30 } },
+    eff:{ studyMul:1.51 } },
   { id:"b_exam",    born:true, fam:"学", name:"考试型选手", from:"考公一次上岸",
     desc:"凡是有标准答案的东西你都拿手。可惜后来的事，大多没有标准答案。",
-    eff:{ studyMul:1.16, promo:2 } },
+    eff:{ studyMul:1.27, promo:3 } },
   { id:"b_law",     born:true, fam:"学", name:"懂点法",   from:"本科念的法学",
     desc:"合同、条例、程序，你看得比别人细。这让你办事慢一点，也让你在某些年份睡得着。",
-    eff:{ studyMul:1.08, shield:8 } },
+    eff:{ studyMul:1.14, shield:14 } },
   { id:"b_number",  born:true, fam:"学", name:"对数敏感", from:"父亲是会计",
     desc:"一张表摆在你面前，不对的地方会自己跳出来。你因此得罪过人，也因此躲过一次。",
-    eff:{ workMul:1.05, shield:6 } },
+    eff:{ workMul:1.08, shield:10 } },
 
   // —— 身体 ——
   { id:"b_ox",      born:true, fam:"体", name:"底子好",   from:"从小没生过什么大病",
     desc:"熬夜、喝酒、连轴转，你恢复得比别人快。年轻时这是本钱，年纪大了这是错觉。",
-    eff:{ hpDecay:0.86 } },
+    eff:{ hpDecay:0.76 } },
   { id:"b_runner",  born:true, fam:"体", name:"跑步的习惯", from:"大学四年的操场",
     desc:"再忙也要出去跑二十分钟。别人说你自律，其实你只是不跑就睡不着。",
-    eff:{ hpGain:1.28, hpDecay:0.93 } },
+    eff:{ hpGain:1.48, hpDecay:0.88 } },
   { id:"b_hollow",  born:true, fam:"体", name:"不上头",   from:"天生的酒量",
     desc:"一斤白酒下去脸不红。这在有些场合是护身符，在有些场合是催命符。",
-    eff:{ relMul:1.13, hpDecay:1.10 } },
+    eff:{ relMul:1.22, hpDecay:1.17 } },
   { id:"b_sleep",   born:true, fam:"体", name:"倒头就睡", from:"什么事都不影响你睡觉",
     desc:"再大的事，晚上十一点一躺下你就着了。第二天照样能想事。",
-    eff:{ hpDecay:0.90, workHp:0.88 } },
+    eff:{ hpDecay:0.83, workHp:0.8 } },
 
   // —— 出身 ——
   { id:"b_teacher", born:true, fam:"家", name:"教师家庭", from:"父母都是中学教员",
     desc:"家里没什么门路，有一整面墙的书，和一句「本分做人」。这句话让你少走了一些弯路，也少走了一些近路。",
-    eff:{ famDecay:0.4, shield:6 } },
+    eff:{ famDecay:0.6, shield:10 } },
   { id:"b_county",  born:true, fam:"家", name:"县城长大", from:"在这个县里长到十八岁",
     desc:"哪条街通哪条街、谁家跟谁家沾亲，你不用打听。回来工作那年，很多事你一听就懂。",
-    eff:{ relMul:1.08, netYear:0.4 } },
+    eff:{ relMul:1.14, netYear:0.64 } },
   { id:"b_village", born:true, fam:"家", name:"农村出来的", from:"考出去之前一直在村里",
     desc:"你知道一亩地能打多少粮，也知道「群众反映」通常是谁在反映。下乡的时候，你说的话别人听得进去。",
-    eff:{ workMul:1.06, promo:2 } },
+    eff:{ workMul:1.1, promo:3 } },
   { id:"b_solo",    born:true, fam:"家", name:"家里就你一个", from:"独生子女",
     desc:"什么都是你的，也什么都得你扛。父母老了以后，这两件事变成同一件。",
-    eff:{ famDecay:-0.35, income:1.6 } },
+    eff:{ famDecay:-0.52, income:2.72 } },
   { id:"b_early",   born:true, fam:"家", name:"成家早",   from:"毕业那年就定下了",
     desc:"别人还在为这件事焦虑的时候，你已经不用再想了。省下来的心思都用在了别处。",
-    eff:{ famDecay:0.5, promo:1 } },
+    eff:{ famDecay:0.75, promo:2 } },
 
   // —— 钱 ——
   { id:"b_thrift",  born:true, fam:"财", name:"不乱花钱", from:"小时候家里紧过",
     desc:"你对钱有一种近乎笨拙的谨慎。同事换车换表的时候，你在算这个月还剩多少。",
-    eff:{ expense:-2.2, riskYear:-0.2 } },
+    eff:{ expense:-3.52, riskYear:-0.3 } },
   { id:"b_downpay", born:true, fam:"财", name:"首付是家里出的", from:"父母把半辈子的积蓄拿了出来",
     desc:"你比同龄人早七八年不用为这件事发愁。这七八年你用来做了别的事。",
-    init:s=>{ s.money += 12; }, eff:{ famDecay:0.3 } },
+    init:s=>{ s.money += 12; }, eff:{ famDecay:0.45 } },
   { id:"b_side",    born:true, fam:"财", name:"有点手艺", from:"大学就在外面接活",
     desc:"写字、修图、看合同，你总有一点能换钱的本事。数目不大，但从来没断过。",
-    eff:{ income:2.2 } },
+    eff:{ income:3.74 } },
 
   // —— 胆子（高收益高风险） ——
   { id:"b_guts",    born:true, fam:"胆", w:0.7, name:"敢下手", from:"你一直是先做再说的那种人",
     desc:"别人还在权衡的时候你已经动了。你赢过几次——赢的时候没有人问你是怎么赢的。",
-    eff:{ workMul:1.14, riskYear:0.8 } },
+    eff:{ workMul:1.24, riskYear:1.2 } },
   { id:"b_broker",  born:true, fam:"胆", w:0.6, name:"天生会办事", from:"从小就是替人跑腿的那个",
     desc:"什么事到你手里都能找到一个口子。这个本事在这栋楼里很值钱——值钱的东西都标着价。",
-    eff:{ relMul:1.16, greyMul:1.18, riskYear:0.9 } },
+    eff:{ relMul:1.27, greyMul:1.31, riskYear:1.35 } },
   { id:"b_nerve",   born:true, fam:"胆", w:0.8, name:"心大",   from:"你从来不为已经发生的事失眠",
     desc:"该来的总会来，来了再说。这让你在很多个晚上睡得比别人好。",
-    eff:{ hpDecay:0.86, workHp:0.90, riskYear:0.6 } },
+    eff:{ hpDecay:0.76, workHp:0.83, riskYear:0.9 } },
   { id:"b_gamble",  born:true, fam:"胆", w:0.5, name:"赌　性", from:"你算得清概率，但你更信手气",
     desc:"你这辈子几个重要的决定都是在没有把握的时候做的。有两次是对的。",
-    eff:{ promo:4, riskYear:1.0 } },
+    eff:{ promo:6, riskYear:1.5 } },
   { id:"b_nose",    born:true, fam:"胆", w:0.5, name:"闻得到钱", from:"你总能先一步知道哪里有油水",
     desc:"哪个项目要动、哪块地要批，你比文件先知道。知道得早是本事，知道得太早是记录。",
-    eff:{ greyMul:1.28, riskYear:1.1 } },
+    eff:{ greyMul:1.48, riskYear:1.65 } },
   { id:"b_face",    born:true, fam:"胆", w:0.8, name:"好面子", from:"你从小见不得自己比别人差",
     desc:"该请的客一次不落，该到的场一次不缺。你的人缘一直很好，你的开销也一直下不来。",
-    eff:{ relMul:1.14, expense:2.6 } },
+    eff:{ relMul:1.24, expense:4.16 } },
 
   // —— 运气 ——
   { id:"b_lucky",   born:true, fam:"运", w:0.8, name:"运气不错", from:"你自己也说不清",
     desc:"该有坑位的时候总有坑位。这种事没法解释，也不能拿出来说。",
-    eff:{ promo:3 } },
+    eff:{ promo:5 } },
   { id:"b_photo",   born:true, fam:"运", name:"长得周正", from:"父母给的",
     desc:"上镜、上台、上电视，都不吃亏。这不是能力，但在某些环节它就是。",
-    eff:{ relMul:1.06, promo:2 } },
+    eff:{ relMul:1.1, promo:3 } },
   { id:"b_voice",   born:true, fam:"运", name:"嗓子好", from:"从小是学校广播站的",
     desc:"你念稿子的时候，会议室里没人玩手机。这件小事让你比同批人多站了几次台。",
-    eff:{ promo:2, netYear:0.3 } },
+    eff:{ promo:3, netYear:0.48 } },
   { id:"b_tall",    born:true, fam:"运", name:"个子高", from:"一米八六",
     desc:"合影的时候永远在后排中间。你后来发现，后排中间也是一个位置。",
-    eff:{ promo:1, relMul:1.05 } },
+    eff:{ promo:2, relMul:1.08 } },
 
   // —— 性子 ——
   { id:"b_patient", born:true, fam:"性", name:"沉得住气", from:"你从小排队不插队",
     desc:"该等的时候你能等三年，不抱怨，也不打听。等到的那一次，你自己都有点意外。",
-    eff:{ meritDecay:0.90, promo:2 } },
+    eff:{ meritDecay:0.83, promo:3 } },
   { id:"b_thick",   born:true, fam:"性", name:"脸皮厚", from:"被当众说过一次，回去照吃照睡",
     desc:"批评、冷落、当场下不来台，对你的杀伤力都比对别人小一半。",
-    eff:{ hpDecay:0.92, relMul:1.06 } },
+    eff:{ hpDecay:0.86, relMul:1.1 } },
   { id:"b_stiff",   born:true, fam:"性", name:"认死理", from:"你父亲也是这样",
     desc:"该顶的时候你会顶，哪怕对面是谁。这让你少了几次机会，也让你在某一年成了那个没有签字的人。",
-    eff:{ shield:12, workMul:1.06, promo:-2 } },
+    eff:{ shield:20, workMul:1.1, promo:-3 } },
   { id:"b_warm",    born:true, fam:"性", name:"待人厚道", from:"你妈说吃亏是福",
     desc:"你帮过的人，不记得的多，记得的少。少的那几个后来都在关键的时候出现过。",
-    eff:{ netDecay:0.86, famDecay:0.3 } },
+    eff:{ netDecay:0.76, famDecay:0.45 } },
   { id:"b_hedge",   born:true, fam:"性", name:"凡事留一手", from:"你从小就爱把东西收起来",
     desc:"每件事你都会先想一遍最坏的情况，再为它准备一点东西。这让你活得累，也让你活得久。",
-    eff:{ shield:10, workMul:0.96, hpDecay:0.95 } },
+    eff:{ shield:17, workMul:0.93, hpDecay:0.91 } },
 
   // —— 履历 ——
   { id:"b_army",    born:true, fam:"历", name:"当过兵", from:"两年义务兵",
     desc:"你叠被子的方式这辈子没改过。带队、拉练、通宵值班，这些事你从来不用学。",
-    eff:{ hpDecay:0.90, promo:2 } },
+    eff:{ hpDecay:0.83, promo:3 } },
   { id:"b_union",   born:true, fam:"历", name:"学生会出身", from:"当过三年学生会主席",
     desc:"开会、协调、写总结，这些别人上手要两年的东西，你报到第一天就会。",
-    eff:{ relMul:1.08, workMul:1.05 } },
+    eff:{ relMul:1.14, workMul:1.08 } },
   { id:"b_school",  born:true, fam:"历", name:"名校毕业", from:"一所大家都听说过的学校",
     desc:"这四个字在履历上占的位置不大，但每一次筛表的时候它都在。",
-    eff:{ promo:3, studyMul:1.06 } },
+    eff:{ promo:5, studyMul:1.1 } },
   { id:"b_master",  born:true, fam:"历", name:"读完书才来的", from:"硕士毕业考的公",
     desc:"你比同批人晚两年上岸，起点高半格。这两年值不值，你在心里算了很久。",
-    init:s=>{ s.ability += 7; }, eff:{ promo:2 } },
+    init:s=>{ s.ability += 7; }, eff:{ promo:3 } },
   { id:"b_civil",   born:true, fam:"历", name:"学工科的", from:"本科念的土木",
     desc:"图纸、标书、验收单，你看得懂。在一个大部分人只会写材料的地方，这是一种稀缺。",
-    eff:{ workMul:1.08, shield:5 } },
+    eff:{ workMul:1.14, shield:8 } },
   { id:"b_intern",  born:true, fam:"历", name:"实习过", from:"大四在市里待过半年",
     desc:"你提前知道了这栋楼是怎么运转的：谁说了算，以及谁看上去像说了算。",
-    eff:{ relMul:1.06, promo:1 } },
+    eff:{ relMul:1.1, promo:2 } },
   { id:"b_lang",    born:true, fam:"历", name:"外语好", from:"从小跟着广播学的",
     desc:"用得上的机会不多，但每次用上，都是别人用不上的场合。",
-    eff:{ promo:2, netYear:0.3 } },
+    eff:{ promo:3, netYear:0.48 } },
 
   /* —— 抽象派 ——
      这一批不是能力，是些很小的、写不进任何考核表的东西。
@@ -1284,38 +1380,38 @@ const TRAITS = [
     eff:{ energy:1 } },
   { id:"b_printer", born:true, fam:"趣", name:"治得住打印机", from:"没人知道为什么",
     desc:"全楼那台谁都弄不好的打印机，你走过去一拍就好。这件事不写进任何考核表，但每个科室都记得你。",
-    eff:{ relMul:1.08, netYear:0.3 } },
+    eff:{ relMul:1.14, netYear:0.48 } },
   { id:"b_floor",   born:true, fam:"趣", name:"三分钟摸清一栋楼", from:"一种说不清的方向感",
     desc:"到一个陌生的单位，你三分钟就知道厕所、楼梯和能抽烟的地方在哪。这听起来不重要，直到某一次它很重要。",
-    eff:{ relMul:1.05, shield:4 } },
+    eff:{ relMul:1.08, shield:7 } },
   { id:"b_order",   born:true, fam:"趣", name:"点菜准", from:"你从小替全家点菜",
     desc:"一桌八个人的口味你能猜得八九不离十。这个本事写不进履历，但每一次饭局散场都有人记住你。",
-    eff:{ relMul:1.09 } },
+    eff:{ relMul:1.15 } },
   { id:"b_meeting", born:true, fam:"趣", name:"会上不走神", from:"或者说，走神的时候看不出来",
     desc:"三个小时的会，你能一直保持一种正在认真听的表情。散会以后还能复述出三条重点。",
-    eff:{ workMul:1.05, hpDecay:0.95 } },
+    eff:{ workMul:1.08, hpDecay:0.91 } },
   { id:"b_zodiac",  born:true, fam:"趣", w:0.8, name:"据说跟谁都合", from:"办公室里传的",
     desc:"单位里有小半个人觉得跟你八字相合。你从来不点破，也从来不承认。",
-    eff:{ netDecay:0.90, promo:1 } },
+    eff:{ netDecay:0.83, promo:2 } },
 
   { id:"b_shirt",   born:true, fam:"癖", name:"衬衫不起褶", from:"体质，不是讲究",
     desc:"你的衬衫从早八点到晚十点是一个样。没有人说得出你哪里好，但所有人都觉得你「像那么回事」。",
-    eff:{ promo:2 } },
+    eff:{ promo:3 } },
   { id:"b_plate",   born:true, fam:"癖", name:"记得住车牌", from:"你自己也觉得没什么用",
     desc:"见过一次的车牌你能记很多年。这个本事你这辈子只真正用上过一次——但那一次很重要。",
-    eff:{ shield:7 } },
+    eff:{ shield:12 } },
   { id:"b_temp",    born:true, fam:"癖", name:"不怕冷也不怕热", from:"夏天不喊热，冬天不喊冷",
     desc:"过紧日子那几年空调限时，整层楼怨声载道，只有你像什么都没发生。",
-    eff:{ hpDecay:0.93, workHp:0.92 } },
+    eff:{ hpDecay:0.88, workHp:0.86 } },
   { id:"b_forget",  born:true, fam:"癖", name:"记不住仇", from:"不是宽容，是真的记不住",
     desc:"当面让你下不来台的人，隔半年你已经想不起来是谁了。你因此少了很多敌人，也少了几分该有的警惕。",
-    eff:{ netDecay:0.88, relMul:1.05, shield:-4 } },
+    eff:{ netDecay:0.8, relMul:1.08, shield:-7 } },
   { id:"b_camera",  born:true, fam:"癖", name:"照片里从不闭眼", from:"一种很小的天赋",
     desc:"合影洗出来，整排就你一个眼睛是睁的。这三十年里，你在很多张照片上都留下了一个清清楚楚的自己。",
-    eff:{ promo:2, netYear:0.2 } },
+    eff:{ promo:3, netYear:0.32 } },
   { id:"b_accent",  born:true, fam:"癖", name:"谁都以为你是本地人", from:"你换过四个地方，每个地方都有人跟你说方言",
     desc:"你不刻意学，但口音会自己往那边靠。异地交流对你的损耗比对别人小。",
-    eff:{ relMul:1.07, famDecay:0.25 } },
+    eff:{ relMul:1.12, famDecay:0.38 } },
 
   /* ===== 天赋 · 第二批 =====
      加了八个新家族（眼 手 声 缘 食 忍 童 命），一局最多撞上两三族，
@@ -1324,198 +1420,237 @@ const TRAITS = [
   // —— 眼：看得见别人看不见的 ——
   { id:"b_read",    born:true, fam:"眼", name:"看得懂脸色", from:"家里以前开小卖部",
     desc:"一个人进门三秒，你就知道他今天顺不顺。这个本事在柜台后面练出来，在会议室里一直好用。",
-    eff:{ relMul:1.10, promo:1 } },
+    eff:{ relMul:1.17, promo:2 } },
   { id:"b_gap",     born:true, fam:"眼", name:"看得出漏洞", from:"你从小爱挑错",
     desc:"一份东西摆在你面前，不对的地方会自己浮上来。你因此改过很多稿，也因此被人烦过很多次。",
-    eff:{ workMul:1.06, shield:7 } },
+    eff:{ workMul:1.1, shield:12 } },
   { id:"b_wind",    born:true, fam:"眼", name:"闻得出风向", from:"说不清怎么来的",
     desc:"文件还没下，你已经隐约觉得要变了。你从来说不出依据，但你后来大部分时候是对的。",
-    eff:{ promo:2, riskYear:-0.4 } },
+    eff:{ promo:3, riskYear:-0.6 } },
   { id:"b_line",    born:true, fam:"眼", name:"知道线在哪", from:"一种天生的分寸感",
     desc:"同一件事，做到哪一步是热心，再往前一步是越界，你从来不需要人提醒。",
-    eff:{ shield:9, relMul:1.05 } },
+    eff:{ shield:15, relMul:1.08 } },
   { id:"b_face2",   born:true, fam:"眼", name:"记得住谁跟谁", from:"你脑子里有一张网",
     desc:"这栋楼里谁跟谁是一拨的、谁跟谁十年前有过节，你心里有一张图。这张图你从来没画出来过。",
-    eff:{ netDecay:0.88, promo:1 } },
+    eff:{ netDecay:0.8, promo:2 } },
 
   // —— 手：会干具体的活 ——
   { id:"b_fix",     born:true, fam:"手", name:"什么都能修", from:"你爸是修机床的",
     desc:"电脑、投影仪、卷帘门、以及那台谁都弄不好的碎纸机。这些事一件也不算工作量。",
-    eff:{ relMul:1.09, netYear:0.3 } },
+    eff:{ relMul:1.15, netYear:0.48 } },
   { id:"b_ppt",     born:true, fam:"手", name:"会做图", from:"自学的",
     desc:"你做的汇报页比别人的好看一档。领导讲话的时候会多停两秒——停的那两秒是给你的。",
-    eff:{ workMul:1.07, promo:1 } },
+    eff:{ workMul:1.12, promo:2 } },
   { id:"b_drive",   born:true, fam:"手", name:"车开得好", from:"大学暑假送过货",
     desc:"路况、停车、长途，你都拿手。有几年这个本事让你去了很多别人去不了的场合。",
-    eff:{ relMul:1.07, hpDecay:1.04 } },
+    eff:{ relMul:1.12, hpDecay:1.07 } },
   { id:"b_cook",    born:true, fam:"手", name:"做得一手好菜", from:"你妈教的",
     desc:"这个本事在单位里毫无用处，在家里价值连城。你后来每次心里堵得慌，就去切一小时的菜。",
-    eff:{ famGain:1.25, hpDecay:0.95 } },
+    eff:{ famGain:1.43, hpDecay:0.91 } },
   { id:"b_pen2",    born:true, fam:"手", name:"一手好字", from:"小学练到初中",
     desc:"签出去的名字好看。这件事没有任何实际意义，但很多年里，看过你签名的人都记住了。",
-    eff:{ promo:2, netYear:0.3 } },
+    eff:{ promo:3, netYear:0.48 } },
   { id:"b_photo2",  born:true, fam:"手", name:"会拍照", from:"大学的相机社",
     desc:"单位的活动照片这些年一大半是你拍的。你几乎不出现在任何一张里。",
-    eff:{ relMul:1.08, workMul:1.03 } },
+    eff:{ relMul:1.14, workMul:1.05 } },
 
   // —— 声：说话这件事 ——
   { id:"b_short",   born:true, fam:"声", name:"说话短", from:"天生不爱多说",
     desc:"别人讲十分钟的事你三分钟讲完，而且没有人觉得少了什么。开会的时候这一点很值钱。",
-    eff:{ workMul:1.06, promo:2 } },
+    eff:{ workMul:1.1, promo:3 } },
   { id:"b_joke",    born:true, fam:"声", name:"会说笑话", from:"你从小是家里逗人笑的那个",
     desc:"冷场的时候你总有一句。这个本事化解过很多难堪，也让某些人一直不太拿你当回事。",
-    eff:{ relMul:1.12, promo:-1, hpDecay:0.94 } },
+    eff:{ relMul:1.2, promo:-2, hpDecay:0.9 } },
   { id:"b_calm",    born:true, fam:"声", name:"急了也不变调", from:"体质",
     desc:"再大的事你说话的语速和音量都是一样的。别人因此觉得你稳。其实你心里跟他们一样慌。",
-    eff:{ promo:2, relMul:1.05 } },
+    eff:{ promo:3, relMul:1.08 } },
   { id:"b_nogossip",born:true, fam:"声", name:"守得住话", from:"你从小不告状",
     desc:"别人跟你说的事，出了这个门就没了。很多年下来，愿意跟你说话的人越来越多。",
-    eff:{ netDecay:0.85, shield:6 } },
+    eff:{ netDecay:0.74, shield:10 } },
   { id:"b_ask",     born:true, fam:"声", name:"敢问", from:"你不觉得不懂是丢人的事",
     desc:"不明白的地方你当场就问。这让你在头两年显得有点笨，在后二十年显得有点可怕。",
-    eff:{ studyMul:1.14, workMul:1.04, promo:-1 } },
+    eff:{ studyMul:1.24, workMul:1.07, promo:-2 } },
 
   // —— 缘：人往你这儿来 ——
   { id:"b_elder",   born:true, fam:"缘", name:"老人缘好", from:"你会听老人说话",
     desc:"快退休的那批人都愿意跟你聊。他们说的都是十几年前的事，而这栋楼里一半的事都埋在十几年前。",
-    eff:{ netYear:0.7, promo:1 } },
+    eff:{ netYear:1.12, promo:2 } },
   { id:"b_young3",  born:true, fam:"缘", name:"年轻人愿意找你", from:"你不摆架子",
     desc:"新来的都爱问你事。这在头十年是负担，在后十年是你唯一还听得见真话的渠道。",
-    eff:{ relMul:1.07, workMul:1.04 } },
+    eff:{ relMul:1.12, workMul:1.07 } },
   { id:"b_woman",   born:true, fam:"缘", name:"食堂阿姨多给一勺", from:"没有理由",
     desc:"这栋楼里打饭、收发、开电梯的人都跟你熟。他们知道的事比处长还多。",
-    eff:{ netYear:0.6, shield:5 } },
+    eff:{ netYear:0.96, shield:8 } },
   { id:"b_quiet2",  born:true, fam:"缘", name:"谁都不防你", from:"你长了一张没有攻击性的脸",
     desc:"人们在你面前说话比在别人面前松。你听到过很多本来轮不到你听的东西。",
-    eff:{ relMul:1.08, riskYear:-0.3 } },
+    eff:{ relMul:1.14, riskYear:-0.45 } },
   { id:"b_neighbor",born:true, fam:"缘", name:"住得离单位近", from:"运气",
     desc:"走路十二分钟。这十二分钟三十年下来是一笔很大的数目，你用它睡觉。",
-    eff:{ energy:1, famDecay:0.3, workHp:1.08 } },
+    eff:{ energy:1, famDecay:0.45, workHp:1.14 } },
 
   // —— 食：吃喝上的事 ——
   { id:"b_stomach", born:true, fam:"食", name:"胃好", from:"祖传",
     desc:"冷的、辣的、隔夜的、凌晨两点的，你都能吃。这些年你的胃替你挡了很多东西。",
-    eff:{ hpDecay:0.90 } },
+    eff:{ hpDecay:0.83 } },
   { id:"b_light",   born:true, fam:"食", name:"吃得清淡", from:"从小家里就这样",
     desc:"你对油腻的东西没有兴趣。饭局上你吃得很少，回家会再煮一点面。",
-    eff:{ hpDecay:0.88, relMul:0.97 } },
+    eff:{ hpDecay:0.8, relMul:0.95 } },
   { id:"b_tea",     born:true, fam:"食", name:"懂点茶", from:"跟一位老同志学的",
     desc:"你能喝出个大概，也知道什么时候不该说破。这个本事在某些房间里比学历有用。",
-    eff:{ relMul:1.09, netYear:0.3 } },
+    eff:{ relMul:1.15, netYear:0.48 } },
   { id:"b_smoke",   born:true, fam:"食", name:"会递烟", from:"看会的",
     desc:"什么时候递、递给谁、自己抽不抽，你不用想。你自己其实并不爱抽。",
-    eff:{ relMul:1.11, hpDecay:1.08 } },
+    eff:{ relMul:1.19, hpDecay:1.14 } },
 
   // —— 忍：扛得住 ——
   { id:"b_grind",   born:true, fam:"忍", name:"耗得起", from:"你从小做事慢但不放弃",
     desc:"一件事拖三年你也不烦。这栋楼里大部分事都要三年，所以你从来没输过时间。",
-    eff:{ meritDecay:0.88, promo:1 } },
+    eff:{ meritDecay:0.8, promo:2 } },
   { id:"b_alone",   born:true, fam:"忍", name:"待得住", from:"一个人也不觉得闷",
     desc:"外派、驻村、值班、一个人守一间办公室，你都不难受。别人躲的岗位你能去。",
-    eff:{ promo:3, famDecay:-0.3 } },
+    eff:{ promo:5, famDecay:-0.45 } },
   { id:"b_norage",  born:true, fam:"忍", name:"不发火", from:"你父亲发过一辈子火",
     desc:"你见过发火的样子，所以你这辈子决定不那样。代价是有些事你憋在心里，一憋十年。",
-    eff:{ relMul:1.07, hpDecay:1.06, shield:5 } },
+    eff:{ relMul:1.12, hpDecay:1.1, shield:8 } },
   { id:"b_norush",  born:true, fam:"忍", name:"不着急", from:"天生",
     desc:"截止日期对你的心率没有影响。你不是不在乎，你只是急也没用这件事很早就想通了。",
-    eff:{ hpDecay:0.90, workMul:0.98, energy:1 } },
+    eff:{ hpDecay:0.83, workMul:0.97, energy:1 } },
 
   // —— 童：小时候留下来的 ——
   { id:"b_poor",    born:true, fam:"童", name:"穷过", from:"上初中之前家里很紧",
     desc:"你对钱有一种很具体的记忆：某一年的某一笔，差多少。这个记忆让你后来在两个方向上都走得远。",
-    eff:{ workMul:1.06, expense:-1.6, riskYear:0.3 } },
+    eff:{ workMul:1.1, expense:-2.56, riskYear:0.45 } },
   { id:"b_moved",   born:true, fam:"童", name:"搬过很多次家", from:"父母工作调动",
     desc:"你从小学会了怎么快速融进一个新地方。也从小学会了不把任何地方当成自己的。",
-    eff:{ relMul:1.09, famDecay:-0.3 } },
+    eff:{ relMul:1.15, famDecay:-0.45 } },
   { id:"b_sick",    born:true, fam:"童", name:"小时候病过一场", from:"住了两个月院",
     desc:"你比同龄人更早知道身体是有限的。这让你一辈子不敢太拼，也一辈子没垮过。",
-    eff:{ hpDecay:0.84, workMul:0.96 } },
+    eff:{ hpDecay:0.73, workMul:0.93 } },
   { id:"b_grand",   born:true, fam:"童", name:"奶奶带大的", from:"父母在外地",
     desc:"你说话的方式里有一点上一代人的腔调。老同志听得出来，年轻人听不出来。",
-    eff:{ netYear:0.5, famDecay:0.35 } },
+    eff:{ netYear:0.8, famDecay:0.52 } },
   { id:"b_books",   born:true, fam:"童", name:"家里有很多书", from:"父亲爱买书",
     desc:"你从小翻的是别人家没有的东西。这些东西在考试里没用，在写材料的时候会自己冒出来。",
-    eff:{ studyMul:1.16, workMul:1.03 } },
+    eff:{ studyMul:1.27, workMul:1.05 } },
 
   // —— 命：说不清的那类 ——
   { id:"b_late",    born:true, fam:"命", w:0.8, name:"晚熟", from:"你三十岁以后才开窍",
     desc:"前十年你一直是那个不起眼的。三十五岁以后，别人开始觉得你变了。其实你没变，是时候到了。",
-    eff:{ promo:-2, studyMul:1.10, workMul:1.10 } },
+    eff:{ promo:-3, studyMul:1.17, workMul:1.17 } },
   { id:"b_earlybird",born:true, fam:"命", w:0.8, name:"早慧", from:"你二十几岁就懂很多事",
     desc:"你比同龄人早看明白这栋楼是怎么回事。早看明白的好处是少走弯路，坏处是少了很多年的劲头。",
-    eff:{ promo:3, workMul:0.97, hpDecay:0.96 } },
+    eff:{ promo:5, workMul:0.95, hpDecay:0.93 } },
   { id:"b_narrow",  born:true, fam:"命", w:0.6, name:"险过一次", from:"十九岁那年出过一次车祸",
     desc:"你在医院躺了四十天，出来以后对很多事的看法都变了。你从来不跟人讲这件事。",
-    eff:{ hpDecay:0.88, shield:8, promo:-1 } },
+    eff:{ hpDecay:0.8, shield:14, promo:-2 } },
   { id:"b_lucky2",  born:true, fam:"命", w:0.5, name:"关键时候不倒霉", from:"没有解释",
     desc:"该出事的时候没出，该赶上的都赶上了。这种事情不能说，一说就不灵了。",
-    eff:{ shield:10, promo:2 } },
+    eff:{ shield:17, promo:3 } },
   { id:"b_dream",   born:true, fam:"命", w:0.6, name:"直　觉", from:"你自己也怕这个",
     desc:"有几次你在事情发生之前就隐约不安。你从来没听过那种不安，后来每一次都后悔。",
-    eff:{ riskYear:-0.8, promo:1 } },
+    eff:{ riskYear:-1.2, promo:2 } },
 
   // —— 补充现有家族 ——
   { id:"b_frame",   born:true, fam:"写", name:"会搭架子", from:"你脑子里先有骨头再有肉",
     desc:"一份东西你先想清楚分几块，然后往里填。这让你写得快，也让你写的东西看起来都差不多。",
-    eff:{ workMul:1.09, studyMul:1.04 } },
+    eff:{ workMul:1.15, studyMul:1.07 } },
   { id:"b_speed",   born:true, fam:"学", name:"记性好", from:"天生",
     desc:"看过的数字、开过的会、说过的话，你都记得。这个本事让你很多年不用做笔记，也让你很多年睡不好。",
-    eff:{ studyMul:1.20, hpDecay:1.05 } },
+    eff:{ studyMul:1.34, hpDecay:1.08 } },
   { id:"b_econ",    born:true, fam:"学", name:"学经济的", from:"本科念的财政",
     desc:"预算、转移支付、专项债，这些词对你不是黑话。在一个大部分人只会念文件的地方，这是一种优势。",
-    eff:{ workMul:1.07, shield:4, income:1.2 } },
+    eff:{ workMul:1.12, shield:7, income:2.04 } },
   { id:"b_ag",      born:true, fam:"学", name:"学农的", from:"农业大学",
     desc:"你下乡的时候能蹲下去跟人聊苗情。这在很多年里没有用，在某一年忽然非常有用。",
-    eff:{ workMul:1.05, promo:2 } },
+    eff:{ workMul:1.08, promo:3 } },
   { id:"b_swim",    born:true, fam:"体", name:"会游泳", from:"在河边长大",
     desc:"这个本事你这辈子只用过一次。用那一次的时候，水里还有另一个人。",
-    eff:{ hpGain:1.15, promo:2 } },
+    eff:{ hpGain:1.25, promo:3 } },
   { id:"b_walk",    born:true, fam:"体", name:"走路快", from:"没什么理由",
     desc:"你走路比所有人都快半步。开会永远第一个到，散会永远第一个走。",
-    eff:{ energy:1, hpDecay:0.96, relMul:0.97 } },
+    eff:{ energy:1, hpDecay:0.93, relMul:0.95 } },
   { id:"b_inlaw",   born:true, fam:"家", name:"岳家在本地", from:"结婚带来的",
     desc:"很多事你不用出面，自然有人打点。你从来没问过这些事是怎么办成的。",
-    eff:{ relMul:1.10, riskYear:0.5 } },
+    eff:{ relMul:1.17, riskYear:0.75 } },
   { id:"b_farmer",  born:true, fam:"家", name:"父母还在种地", from:"他们不肯进城",
     desc:"每年秋天你要回去一趟。你在田埂上站着的时候，心里那些很大的事会忽然变小。",
-    eff:{ famDecay:0.45, hpDecay:0.94, promo:1 } },
+    eff:{ famDecay:0.68, hpDecay:0.9, promo:2 } },
   { id:"b_debtfree",born:true, fam:"财", name:"没有贷款", from:"你不喜欢欠钱",
     desc:"你这辈子没有背过一分利息。这让你在很多个需要低头的时刻，可以不低头。",
-    eff:{ expense:-1.4, shield:6 } },
+    eff:{ expense:-2.24, shield:10 } },
   { id:"b_invest",  born:true, fam:"财", w:0.8, name:"会理财", from:"自学的",
     desc:"同样一笔钱在你手里长得快一点。这个本事很干净，干净到你后来有些收入没人说得清是哪来的。",
-    eff:{ income:3.4, riskYear:0.3 } },
+    eff:{ income:5.78, riskYear:0.45 } },
   { id:"b_bold2",   born:true, fam:"胆", w:0.7, name:"敢担责", from:"你不喜欢把事推给别人",
     desc:"该签的字你签，出了事你认。这让很多事在你手里能推动，也让很多事最后落在你名下。",
-    eff:{ workMul:1.12, promo:2, riskYear:0.7 } },
+    eff:{ workMul:1.2, promo:3, riskYear:1.05 } },
   { id:"b_burn",    born:true, fam:"胆", w:0.6, name:"拼得起", from:"你年轻时不知道什么叫累",
     desc:"连着三个月每天四个小时的睡眠，你能扛。扛完那三个月，你的身体记了三十年。",
-    eff:{ workMul:1.18, hpDecay:1.22, promo:1 } },
+    eff:{ workMul:1.31, hpDecay:1.37, promo:2 } },
   { id:"b_still",   born:true, fam:"性", name:"不比较", from:"你天生不太在意别人怎么样",
     desc:"同批的谁提了、谁调走了，你不太上心。这件事让你少了很多动力，也让你少了很多个失眠的夜晚。",
-    eff:{ hpDecay:0.86, famDecay:0.4, promo:-2 } },
+    eff:{ hpDecay:0.76, famDecay:0.6, promo:-3 } },
   { id:"b_clean2",  born:true, fam:"性", w:0.9, name:"怕　脏", from:"一种说不清的洁癖",
     desc:"说不清来路的东西你碰都不想碰。这不是觉悟，是生理反应。你自己也觉得这个理由不够高尚。",
-    eff:{ shield:16, greyMul:0.70, relMul:0.96 } },
+    eff:{ shield:27, greyMul:0.49, relMul:0.93 } },
   { id:"b_curious", born:true, fam:"趣", name:"什么都想弄明白", from:"改不掉",
     desc:"一件跟你没关系的事，你也要搞清楚它是怎么回事。这让你知道得比谁都多，也让你有几次差点惹上麻烦。",
-    eff:{ studyMul:1.12, riskYear:0.3, shield:5 } },
+    eff:{ studyMul:1.2, riskYear:0.45, shield:8 } },
   { id:"b_early2",  born:true, fam:"趣", name:"起得早", from:"生物钟",
     desc:"你六点自然醒，二十年没有变过。办公室的灯经常是你开的。",
-    eff:{ energy:1, workHp:1.06 } },
+    eff:{ energy:1, workHp:1.1 } },
   { id:"b_lost",    born:true, fam:"癖", name:"东西从来不丢", from:"一种偏执",
     desc:"钥匙、证件、发票、十年前的会议记录，你都能在两分钟内找出来。这个习惯救过你一次。",
-    eff:{ shield:11 } },
+    eff:{ shield:19 } },
   { id:"b_num2",    born:true, fam:"癖", name:"记得住日期", from:"没什么用的天赋",
     desc:"哪年哪月发生过什么，你张口就来。开会的时候这一点让人觉得你很厉害，其实你只是记性长在了没用的地方。",
-    eff:{ workMul:1.04, netYear:0.4, promo:1 } },
+    eff:{ workMul:1.07, netYear:0.64, promo:2 } },
+
+  /* ===== 天赋 · 高收益高风险 =====
+     这一批的幅度比别的大得多，代价也真。权重压到 0.4~0.6，
+     分「锋」「劫」两族，一局最多撞上两条 —— 它们该是意外，不是配置。 ===== */
+
+  { id:"b_edge",     born:true, fam:"锋", w:0.6,  name:"不要命", from:"你从小不知道什么叫适可而止",
+    desc:"要么不做，做就做到底。四十年里你有三次连着两个月没睡过一个整觉——每一次都换来了别人换不来的东西。",
+    eff:{ workMul:1.42, hpDecay:1.55, promo:3 } },
+  { id:"b_cold",     born:true, fam:"锋", w:0.55, name:"心　狠", from:"你能把人和事分得很开",
+    desc:"该断的关系你断得干净，该舍的人你舍得下。这让你走得比同批人快，也让你在某些夜里想不起来该给谁打电话。",
+    eff:{ workMul:1.24, promo:6, famDecay:-1.4, relMul:0.9 } },
+  { id:"b_blunt",    born:true, fam:"锋", w:0.6,  name:"口无遮拦", from:"改不掉，也没想改",
+    desc:"该说的不该说的你都会说。你因此办成过几件所有人都以为办不成的事，也因此被三个人记了一辈子。",
+    eff:{ workMul:1.30, shield:20, promo:-6, netDecay:1.25 } },
+  { id:"b_norest",   born:true, fam:"锋", w:0.5,  name:"不知疲倦", from:"体质异于常人",
+    desc:"你一天能干别人一天半的活，连着干十年也不塌。第十一年的体检报告上，医生用红笔圈了四个地方。",
+    eff:{ energy:2, hpDecay:1.62 } },
+  { id:"b_prodigy",  born:true, fam:"锋", w:0.45, name:"过目不忘", from:"一种负担",
+    desc:"看过的东西你忘不掉——包括所有你希望自己能忘掉的。这让你成了这栋楼里最好用的人，也让你四十岁以后很少睡整觉。",
+    eff:{ studyMul:1.75, workMul:1.12, hpDecay:1.28 },
+    init:s=>{ s.ability += 12; } },
+
+  { id:"b_shadow",   born:true, fam:"劫", w:0.5,  name:"早年那件事", from:"二十岁那年，你没做，但你在场",
+    desc:"一件很久以前的事，跟你有关，也说不上有多大关系。它从来没有被翻出来过。你也从来没有真正忘掉过。",
+    eff:{ promo:5, netYear:1.6, riskYear:1.2 },
+    init:s=>{ s.risk = cl(s.risk + 14, 0, 140); } },
+  { id:"b_father",   born:true, fam:"劫", w:0.45, name:"父辈的那点关系", from:"你父亲当年帮过一个人",
+    desc:"那个人现在的位置很高。他从来没有主动找过你，但你的名字在某些场合被提起过。一荣俱荣的另一半，是一损俱损。",
+    eff:{ promo:8, netYear:2.4, riskYear:1.0, netDecay:0.7 } },
+  { id:"b_darkhand", born:true, fam:"劫", w:0.4,  name:"手　黑", from:"你自己也不太愿意承认",
+    desc:"同样一个位置，你能从里面拿出比别人多得多的东西。这个本事一辈子只需要用对一次，也一辈子只需要错一次。",
+    eff:{ greyMul:1.85, riskYear:2.6, shield:-12 } },
+  { id:"b_hardluck", born:true, fam:"劫", w:0.5,  name:"命　硬", from:"算命的说过一句话，你记了三十年",
+    desc:"该出事的时候你没出事，别人替你出了。你活得比同批人都长，代价是每一次都得看着别人先走。",
+    eff:{ hpDecay:0.62, shield:14, famDecay:-1.0, relMul:0.92 } },
+  { id:"b_allin",    born:true, fam:"劫", w:0.45, name:"押上全部", from:"考公那年你把退路全断了",
+    desc:"你没有第二条路，家里也没有。这让你比谁都拼，也让你比谁都输不起——每一次选择你都要多想三天。",
+    eff:{ workMul:1.26, studyMul:1.24, hpDecay:1.2, expense:-3 },
+    init:s=>{ s.money = Math.max(0, s.money - 2); s.ability += 6; } },
 ];
 
 /* ---------- 开局抽天赋 ----------
    两到三条，一族只出一条 —— 抽到两条"会来事"就等于白抽一条。
    高收益高风险那几条压了权重，让它们是惊喜，不是常态。 */
 function rollTalents(){
-  const want = ri(2, 3);
+  const want = 3;   // 固定三条：两条的时候玩家常常感觉不到天赋的存在
   const pool = TRAITS.filter(t => t.born).map(t => ({ t, w: t.w == null ? 1 : t.w }));
   const fams = {}, got = [];
   while(got.length < want && pool.length){
@@ -7321,6 +7456,8 @@ function baseEnergy(){
   let e = S.age<=35 ? 12 : S.age<=50 ? 10 : 9;
   if(S.health < 34) e -= 2;
   if(S.health < 16) e -= 2;
+  if(S.family >= 70) e += 1;      // 后方稳，第二天是有精神的
+  else if(S.family < 20) e -= 1;  // 家里正乱着，人是散的
   if(S.rank >= 4) e += 2;         // 位置高了，事也多了，得给得起
   else if(S.rank >= 2) e += 1;
   e += tSum("energy");            // 档案词条：有人天生一天当两天用
@@ -7559,10 +7696,10 @@ function confirmAlloc(){
   if(a.work){ const v=a.work*2.2*abMul*m.meritMul*tMul("workMul"); S.merit = clc(S.merit+v); add("merit",v,"工作");
               const h=-a.work*0.45*m.healthMul*hpLossMul()*tMul("workHp"); S.health=cl(S.health+h); add("health",h,"工作");
               const f=-a.work*0.32; S.family=cl(S.family+f); add("family",f,"工作"); }
-  if(a.rel){  const v=a.rel*2.3*tMul("relMul"); S.network = clc(S.network+v); add("network",v,"关系");
+  if(a.rel){  const v=a.rel*2.3*tMul("relMul")*famCoef(); S.network = clc(S.network+v); add("network",v,"关系");
               const mo=-a.rel*0.28; S.money=Math.max(0,S.money+mo); add("money",mo,"应酬");
               const f=-a.rel*0.35; S.family=cl(S.family+f); add("family",f,"关系"); }
-  if(a.fam){  const v=a.fam*2.8*(m.familyMul||1)*tMul("famGain"); S.family=cl(S.family+v); add("family",v,"陪家人");
+  if(a.fam){  const v=a.fam*4.1*(m.familyMul||1)*tMul("famGain"); S.family=cl(S.family+v); add("family",v,"陪家人");
               const mo=-a.fam*0.16; S.money=Math.max(0,S.money+mo); add("money",mo,"家用"); }
   if(a.hp){   const v=a.hp*2.6*tMul("hpGain"); S.health=cl(S.health+v); add("health",v,"锻炼"); }
   if(a.study){const v=a.study*1.7*m.studyMul*studyEff()*tMul("studyMul"); S.ability = Math.max(0, S.ability + v);
@@ -7594,10 +7731,10 @@ function settle(){
 
   // 自然衰减
   let hd = S.age<30 ? -0.15 : S.age<35 ? -0.35 : S.age<50 ? -1.2 : S.age<60 ? -2.0 : S.age<70 ? -3.2 : -5.0;
-  hd *= m.healthMul * tMul("hpDecay");
+  hd *= m.healthMul * tMul("hpDecay") * (2 - famCoef());   // 家庭好 → 衰减慢；家里出事 → 加速
   S.health = cl(S.health + hd); add("health", hd, "自然衰减");
 
-  let fd = -1.5 + tSum("famDecay");
+  let fd = -1.1 + tSum("famDecay");   // 自然疏远压一档：投进去要守得住，这条线才有意义
   S.family = cl(S.family + fd); add("family", fd, "自然疏远");
 
   // 政绩/人脉折旧
@@ -7797,8 +7934,10 @@ function advanceYear(){
     S.diedInOffice = !S.retired;
     return endGame();
   }
-  let dp = S.age<50?0.0018 : S.age<60?0.006 : S.age<70?0.019 : S.age<80?0.05 : S.age<90?0.12 : 0.27;
-  dp *= 1 + Math.max(0,(70 - S.health)) / 42;   // 健康越差，风险成倍放大
+  // 在任猝死：整体压低一档。原来五十几岁每年 0.6%、六十几岁 1.9%，
+  // 四十年累下来相当一部分人根本活不到退休，玩家的规划被随机性打断得太频繁。
+  let dp = S.age<50?0.0010 : S.age<60?0.0032 : S.age<70?0.011 : S.age<80?0.032 : S.age<90?0.085 : 0.20;
+  dp *= 1 + Math.max(0,(70 - S.health)) / 52;   // 健康越差，风险成倍放大（放大得比原来温和）
   dp *= Math.max(0.22, 1 - Math.max(0, S.health - 68) * 0.026);  // 健康越好，越不容易出事
   if(S.health < 12) dp += 0.10;
   if(chance(dp)){ S.diedInOffice = !S.retired; return endGame(); }   // 没退休就死了，就是死在任上
@@ -8143,6 +8282,7 @@ function panelStats(){
       ${statBar("家　庭", S.family, "family", "fam")}
       ${statBar("风　险", S.risk, "risk", "risk")}
     </div>
+    <div class="inspect${S.family < 30 ? " hot" : ""}"><span class="nm">后　方</span><span class="vl">${famNote()}</span></div>
     ${(!S.retired && S.rank >= 3 && S.risk < 20)
       ? `<div class="lockhint">有些事，得先有人觉得你靠得住</div>` : ""}
     ${(!S.retired && S.nextInspect) ? (()=>{
@@ -8214,12 +8354,20 @@ function panelStatus(){
       ${wv ? `<span class="wv">时局：${wv}</span>` : ""}
       ${tr.length ? `<button class="tchip${S.showTraits?" on":""}" onclick="toggleTraits()">档案 <b>${tr.length}</b> ${S.showTraits?"▴":"▾"}</button>` : ""}
     </span>
-  </div>
-  ${S.showTraits && tr.length ? `<div class="card tight tcard">
-    <div class="sec-title">档 案</div>
-    ${tr.map(t=>`<div class="ti"><span class="tn">${fmt(t.name)}</span>${t.born?`<span class="bornt">天赋</span>`:""}<span class="te">${traitEffText(t)}</span>
-      <div class="td">${fmt(t.desc)}</div></div>`).join("")}
-  </div>` : ""}`;
+  </div>`;
+}
+
+/* 档案单独一个面板。原来它挂在 panelStatus 的尾巴上，于是展开以后
+   插在状态栏和属性条中间，把政绩人脉那一排整个挤出了上半截的可视区。
+   现在排在属性条后面，列表自己滚（.tlist）。 */
+function panelTraits(){
+  const tr = activeTraits();
+  if(!S.showTraits || !tr.length) return "";
+  return `<div class="card tight tcard">
+    <div class="sec-title">档 案 <span class="tcount">共 ${cn(tr.length)} 项</span></div>
+    <div class="tlist">${tr.map(t=>`<div class="ti"><span class="tn">${fmt(t.name)}</span>${t.born?`<span class="bornt">天赋</span>`:""}<span class="te">${traitEffText(t)}</span>
+      <div class="td">${fmt(t.desc)}</div></div>`).join("")}</div>
+  </div>`;
 }
 
 function panelNotices(){
@@ -8272,13 +8420,24 @@ function scrollTopIfNewView(key){
   if(key === lastViewKey) return;     // 同一画面内的操作（如加减精力）不滚动
   const first = lastViewKey === null;
   lastViewKey = key;
-  if(first){ window.scrollTo({ top:0, behavior:"auto" }); return; }
-  // 换画面时对齐到正文卡片顶部，红头和属性栏留在上面，不再整页弹回
-  const anchor = document.getElementById("focus");
-  if(!anchor){ window.scrollTo({ top:0, behavior:"smooth" }); return; }
-  const y = anchor.getBoundingClientRect().top + window.pageYOffset - 8;
-  if(window.pageYOffset > y + 4 || window.pageYOffset < y - 4){
-    window.scrollTo({ top: Math.max(0, y), behavior:"smooth" });
+  // 下半截自己就是从正文开始的，回到它的顶就等于对齐到卡片顶部；
+  // 上半截的滚动位置一概不碰——玩家把属性栏拨到哪儿，它就停在哪儿。
+  const pane = document.getElementById("paneFlow");
+  if(!pane){ try{ window.scrollTo({ top:0, behavior:"auto" }); }catch(e){} return; }
+  if(first){ pane.scrollTop = 0; return; }
+  if(pane.scrollTop > 4){
+    try{ pane.scrollTo({ top:0, behavior:"smooth" }); }catch(e){ pane.scrollTop = 0; }
+  }
+}
+
+/* 上半截（属性面板）和下半截（剧情）是两个独立的滚动容器，
+   所以要分开写：翻页只重画下半截，上半截原地更新，滚动位置一动不动。 */
+function paintTop(html){
+  const t = $("#topbar"); if(t) t.innerHTML = html ? (html + `<span class="topfade" aria-hidden="true"></span>`) : "";
+  const w = document.querySelector(".wrap");
+  if(w){
+    w.classList.toggle("solo", !html);      // 没有属性面板时（标题/结局）让下半截占满
+    w.classList.toggle("playing", !!html);  // 局中把红头压扁，省下的高度全给剧情
   }
 }
 
@@ -8291,7 +8450,8 @@ function render(){
   if(S.phase==="end") return renderEnd();
   if(S.phase==="retired") return renderRetired();
 
-  let h = panelStatus() + panelStats() + panelNotices() + `<div id="focus"></div>`;
+  paintTop(panelStatus() + panelStats() + panelTraits());
+  let h = panelNotices() + `<div id="focus"></div>`;
 
   if(S.phase==="event"){
     const e = S.curEv;
@@ -8410,6 +8570,7 @@ function saveBar(){
 function renderTitle(){
   S = null; lastViewKey = null;
   applyLight();
+  paintTop("");
   $("#app").innerHTML = `
   <div class="card">
     <div class="ev-text" style="font-family:var(--display);font-size:16px;line-height:2.1">
@@ -8431,7 +8592,8 @@ function renderTitle(){
 function renderRetired(){
   const rd = S.retireRound || 0;
   const btn = ["往后的日子 →", "再往后 →", "又几年 →", "此　后 →"][Math.min(rd, 3)];
-  const h = `${panelStatus()}${panelStats()}
+  paintTop(panelStatus() + panelStats() + panelTraits());
+  const h = `
   <div class="card">
     <div class="sec-title">退 休 生 活</div>
     <div class="ev-text">${fmt(S.retireNote) || "你办完了手续。走出大院那天阳光很好。\n\n门卫跟你说了句「领导慢走」，这是最后一次有人这么叫你。"}</div>
@@ -8442,6 +8604,7 @@ function renderRetired(){
 }
 
 function renderEnd(){
+  paintTop("");
   const e = S.ending;
   const yrs = S.year - 2026;
   $("#app").innerHTML = `
@@ -8721,10 +8884,13 @@ function evaluatePromotion(){
   // 于是刚升上去的那一年，你的政绩人脉一点没少，分数却掉了一整档。
   const mN = pctOf(S.merit), nN = pctOf(S.network);
   // 能力的封顶随职级放宽：越往上，「够专业」这三个字的分量越重
-  const abScore = Math.min(20 + S.rank * 2.5, S.ability * 0.25);
+  // 能力的封顶：原来 20+职级×2.5，到副部能顶到 40 分，跟政绩满分 42 几乎持平，
+  // 结果「不投学习」直接判死刑，五栏之间没了取舍。压到这个量级刚好是「重要但不是唯一」。
+  const abScore = Math.min(15 + S.rank * 1.7, S.ability * 0.25);
   const score = (mN*0.42 + nN*0.27 + abScore + rnd(0,100)*0.18) * ageCoef(t) + tSum("promo")
         + (S.circle.in && !S.circle.fell ? 5 : 0) - (S.circle.fell ? 9 : 0)
-        - (!S.flags.married && !S.flags.divorced && S.age >= 34 ? (S.age >= 44 ? 6 : 4) : 0);
+        - (!S.flags.married && !S.flags.divorced && S.age >= 34 ? (S.age >= 44 ? 6 : 4) : 0)
+        + famPromo();   // 组织考察那一栏本来就叫「家庭情况」
   if(score >= p.need + needAdj){
     if(t === 9){                        // 副国级即终局：先出任命通知，玩家点了才进结局
       S.rank = 9; S.topped = true; S.flags.topDone = true;
